@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "openrouter_api_key": "",
-  "openrouter_model": "google/gemini-2.0-flash-001",
+  "openrouter_model": "google/gemma-3-27b-it",
   "chatterbox_url": "http://localhost:8004",
   "voice": "default.wav",
   "volume": 1.0,
