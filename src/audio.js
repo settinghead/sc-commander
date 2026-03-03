@@ -54,8 +54,7 @@ function touchFile(filePath) {
 
 function audioFilter() {
   // Short multi-tap echo: two taps at 40ms and 75ms with moderate decay
-  // Pad 100ms of silence so ffplay -autoexit doesn't clip the echo tail
-  return "aecho=0.8:0.88:40|75:0.4|0.25,apad=pad_dur=0.1";
+  return "aecho=0.8:0.88:40|75:0.4|0.25";
 }
 
 // --- File-based playback queue ---
@@ -128,8 +127,8 @@ function playFile(cachePath, volume, echo, volumeOffsetDb, customAudioFilter) {
       } else if (echo) {
         filters.push(audioFilter());
       }
-      // Always normalize loudness in real-time
-      filters.push("dynaudnorm=f=150:g=5:p=0.95:m=10");
+      // Pad silence so ffplay -autoexit doesn't clip echo tails
+      filters.push("apad=pad_dur=0.3");
       ffplayArgs.push("-af", filters.join(","));
       ffplayArgs.push(cachePath);
 
@@ -241,6 +240,23 @@ function downloadToCache(phrase, cachePath, config, voicePath, ttsParams) {
 
 // --- Post-processing ---
 
+function normalizeVolume(cachePath) {
+  if (!existsSync(cachePath)) return;
+  const tmpOut = cachePath + ".norm.wav";
+  try {
+    execSync(
+      `ffmpeg -y -i "${cachePath}" -af loudnorm=I=-16:LRA=11:TP=-1.5 "${tmpOut}"`,
+      { timeout: 10000, stdio: "ignore" },
+    );
+    if (existsSync(tmpOut)) {
+      unlinkSync(cachePath);
+      renameSync(tmpOut, cachePath);
+    }
+  } catch {
+    try { unlinkSync(tmpOut); } catch { /* ignore */ }
+  }
+}
+
 function postProcess(cachePath, command) {
   if (!command || !existsSync(cachePath)) return;
   const tmpOut = cachePath + ".tmp.wav";
@@ -285,6 +301,7 @@ export async function speakPhrase(phrase, config, pack) {
     await downloadToCache(phrase, cachePath, config, voicePath, ttsParams);
     if (!existsSync(cachePath)) return; // download failed
     if (postProcessCmd) postProcess(cachePath, postProcessCmd);
+    normalizeVolume(cachePath);
     evictCache(packCacheDir, maxCache);
   }
 
