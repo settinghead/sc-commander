@@ -175,17 +175,24 @@ async function processQueue() {
 
 // --- TTS download ---
 
-function downloadToCache(phrase, cachePath, config, voicePath) {
+function downloadToCache(phrase, cachePath, config, voicePath, ttsParams) {
   return new Promise((resolve) => {
     const chatterboxUrl = config.chatterbox_url || "http://localhost:8004";
-    const endpoint = `${chatterboxUrl}/v1/audio/speech`;
+    const endpoint = `${chatterboxUrl}/tts`;
 
-    const payload = JSON.stringify({
-      input: phrase,
-      voice: voicePath || config.voice || "default.wav",
-      model: "chatterbox-turbo",
-      response_format: "wav",
-    });
+    const body = {
+      text: phrase,
+      voice_mode: "predefined",
+      predefined_voice_id: voicePath || config.voice || "default.wav",
+      output_format: "wav",
+    };
+    // Apply per-pack TTS parameters (exaggeration, cfg_weight, temperature)
+    if (ttsParams) {
+      if (ttsParams.exaggeration != null) body.exaggeration = ttsParams.exaggeration;
+      if (ttsParams.cfg_weight != null) body.cfg_weight = ttsParams.cfg_weight;
+      if (ttsParams.temperature != null) body.temperature = ttsParams.temperature;
+    }
+    const payload = JSON.stringify(body);
 
     const url = new URL(endpoint);
     const requestFn = url.protocol === "https:" ? httpsRequest : httpRequest;
@@ -236,8 +243,9 @@ export async function speakPhrase(phrase, config, pack) {
   const packCacheDir = join(CACHE_DIR, packId);
   mkdirSync(packCacheDir, { recursive: true });
 
+  const ttsParams = pack ? pack.tts_params : null;
   const cacheKey = createHash("md5")
-    .update(phrase.toLowerCase())
+    .update(phrase.toLowerCase() + (ttsParams ? JSON.stringify(ttsParams) : ""))
     .digest("hex");
   const cachePath = join(packCacheDir, `${cacheKey}.wav`);
   const volume = config.volume ?? 0.5;
@@ -250,7 +258,7 @@ export async function speakPhrase(phrase, config, pack) {
   if (existsSync(cachePath)) {
     touchFile(cachePath);
   } else {
-    await downloadToCache(phrase, cachePath, config, voicePath);
+    await downloadToCache(phrase, cachePath, config, voicePath, ttsParams);
     if (!existsSync(cachePath)) return; // download failed
     evictCache(packCacheDir, maxCache);
   }

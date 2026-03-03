@@ -2,6 +2,10 @@
   "name": "StarCraft 1 Adjutant",
   "voice": "voice.wav",
   "echo": true,
+  "tts_params": {
+    "exaggeration": 0.8,
+    "cfg_weight": 0.7
+  },
   "system_prompt": null,
   "fallback_phrases": null
 }

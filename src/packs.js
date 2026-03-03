@@ -110,6 +110,7 @@ export function loadPack(config) {
     echo: packData.echo !== false,
     voicePath,
     volumeOffsetDb: getVolumeOffsetDb(voicePath, packDir),
+    tts_params: packData.tts_params || null,
     system_prompt: packData.system_prompt || null,
     fallback_phrases: packData.fallback_phrases || null,
   };
