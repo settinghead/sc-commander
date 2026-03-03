@@ -2,22 +2,7 @@ import { writeFileSync, appendFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { request as httpsRequest } from "https";
 import { COLLECT_DIR, STATE_DIR, USAGE_FILE } from "./paths.js";
-
-export const DEFAULT_SYSTEM_PROMPT =
-  "You are a terse AI assistant. " +
-  "Respond with ONLY 2-8 words as a brief status report. " +
-  "The phrase MUST end with a past participle or adjective (e.g. complete, deployed, fixed, detected, adjusted, built, failed, nominal, operational, required). " +
-  "Before the final word, state WHAT was done. If you can clearly infer WHY it exists — the purpose or goal — include it (e.g. 'item for purpose adjective'). If the purpose is not obvious, omit it and just describe the action. " +
-  "Do NOT fabricate or guess a purpose. Only include 'for …' when the intent is clearly evident from context. " +
-  "Be authoritative and robotic. No punctuation. No quotes. No explanation. " +
-  "Do NOT include the project name — it will be prepended automatically. " +
-  "Examples: " +
-  "\nAuthorization bypass for session security patched" +
-  "\nDatabase pooling refactored" +
-  "\nReliability test suite confirmed" +
-  "\nMemory leak in cache layer fixed" +
-  "\nRate limiter for abuse prevention deployed" +
-  "\nTypo in header corrected";
+import { buildSystemPrompt } from "./formats.js";
 
 function saveLlmPair(messages, responseText, model, config) {
   if (!config.collect_llm_data) return;
@@ -71,7 +56,7 @@ export function extractContext(eventData) {
   return null;
 }
 
-export function generatePhraseLlm(context, config, systemPrompt) {
+export function generatePhraseLlm(context, config, style) {
   return new Promise((resolve) => {
     const apiKey = config.openrouter_api_key || "";
     if (!apiKey) return resolve({ phrase: null, fallbackReason: "no_api_key" });
@@ -79,7 +64,7 @@ export function generatePhraseLlm(context, config, systemPrompt) {
     const model = config.openrouter_model || "qwen/qwen3.5-flash-02-23";
 
     const messages = [
-      { role: "system", content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
+      { role: "system", content: buildSystemPrompt(style) },
       { role: "user", content: context },
     ];
 

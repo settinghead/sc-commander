@@ -57,7 +57,7 @@ function getVolumeOffsetDb(voicePath, packDir) {
 
 /**
  * Load a voice pack by id (from config.active_pack).
- * Returns { id, name, echo, voicePath, system_prompt, fallback_phrases }.
+ * Returns { id, name, echo, voicePath, style, fallback_phrases }.
  * Falls back to legacy config.voice if no active_pack is set.
  */
 export function loadPack(config) {
@@ -71,7 +71,7 @@ export function loadPack(config) {
       echo: true,
       voicePath: config.voice || "default.wav",
       volumeOffsetDb: 0,
-      system_prompt: null,
+      style: null,
       fallback_phrases: null,
     };
   }
@@ -90,7 +90,7 @@ export function loadPack(config) {
       echo: true,
       voicePath: config.voice || "default.wav",
       volumeOffsetDb: 0,
-      system_prompt: null,
+      style: null,
       fallback_phrases: null,
     };
   }
@@ -113,7 +113,7 @@ export function loadPack(config) {
     tts_params: packData.tts_params || null,
     audio_filter: packData.audio_filter || null,
     post_process: packData.post_process || null,
-    system_prompt: packData.system_prompt || null,
+    style: packData.style || packData.system_prompt || null,
     fallback_phrases: packData.fallback_phrases || null,
   };
 }

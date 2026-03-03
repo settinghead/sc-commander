@@ -91,7 +91,7 @@ async function testPipeline(text) {
   console.log("Generating phrase via LLM...");
 
   const context = `Coding task completed. Assistant's summary: ${text}`;
-  const result = await generatePhraseLlm(context, config, pack.system_prompt);
+  const result = await generatePhraseLlm(context, config, pack.style);
 
   let phrase;
   if (result.phrase) {

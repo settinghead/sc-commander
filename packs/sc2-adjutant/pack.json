@@ -6,6 +6,6 @@
     "exaggeration": 0.5,
     "cfg_weight": 0.5
   },
-  "system_prompt": null,
+  "style": null,
   "fallback_phrases": null
 }
