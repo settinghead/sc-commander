@@ -61,7 +61,17 @@ function getVolumeOffsetDb(voicePath, packDir) {
  * Falls back to legacy config.voice if no active_pack is set.
  */
 export function loadPack(config) {
-  const packId = config.active_pack;
+  let packId = config.active_pack;
+
+  // Random mode: pick a random pack each time
+  if (packId === "random") {
+    const packs = listPacks();
+    if (packs.length > 0) {
+      packId = packs[Math.floor(Math.random() * packs.length)].id;
+    } else {
+      packId = null;
+    }
+  }
 
   // Legacy fallback: no active_pack configured
   if (!packId) {

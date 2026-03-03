@@ -130,6 +130,8 @@ function packList() {
     console.log("No voice packs found.");
     return;
   }
+  const randomMarker = active === "random" ? " (active)" : "";
+  console.log(`  random — Random (picks a different voice each time)${randomMarker}`);
   for (const p of packs) {
     const marker = p.id === active ? " (active)" : "";
     console.log(`  ${p.id} — ${p.name}${marker}`);
@@ -146,11 +148,18 @@ async function voicePick() {
   const config = loadConfig(process.cwd());
   const active = config.active_pack || "";
 
-  const choices = packs.map((p) => ({
-    name: p.id === active ? `${p.name} (active)` : p.name,
-    value: p.id,
-    description: p.id,
-  }));
+  const choices = [
+    {
+      name: active === "random" ? "Random (active)" : "Random",
+      value: "random",
+      description: "Picks a different voice each time",
+    },
+    ...packs.map((p) => ({
+      name: p.id === active ? `${p.name} (active)` : p.name,
+      value: p.id,
+      description: p.id,
+    })),
+  ];
 
   const chosen = await select({
     message: "Select a voice pack",
@@ -180,10 +189,18 @@ function packUse(packId) {
     console.error("Usage: voiceforge pack use <pack-id>");
     process.exit(1);
   }
+  if (packId === "random") {
+    const config = loadConfig(process.cwd());
+    config.active_pack = "random";
+    saveConfig(config);
+    console.log("Switched to pack: Random (picks a different voice each time)");
+    return;
+  }
   const packs = listPacks();
   const match = packs.find((p) => p.id === packId);
   if (!match) {
     console.error(`Pack "${packId}" not found. Available packs:`);
+    console.error("  random — Random (picks a different voice each time)");
     for (const p of packs) console.error(`  ${p.id} — ${p.name}`);
     process.exit(1);
   }
