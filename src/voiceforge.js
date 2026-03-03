@@ -57,15 +57,25 @@ async function main() {
 
   // For contextual events, try LLM phrase generation
   let phrase = null;
+  let fallbackReason = null;
+  let fallbackDetail = null;
   if (CONTEXTUAL_EVENTS.has(eventName)) {
     const context = extractContext(eventData);
     if (context) {
-      phrase = await generatePhraseLlm(context, config);
+      const result = await generatePhraseLlm(context, config);
+      phrase = result.phrase;
+      fallbackReason = result.fallbackReason;
+      fallbackDetail = result.detail || null;
+    } else {
+      fallbackReason = "no_context";
     }
   }
 
   // Fall back to predefined phrases
   if (!phrase) {
+    if (fallbackReason) {
+      logFallback(eventName, fallbackReason, fallbackDetail);
+    }
     const phrases = FALLBACK_PHRASES[category] || ["Standing by"];
     phrase = phrases[Math.floor(Math.random() * phrases.length)];
   }
