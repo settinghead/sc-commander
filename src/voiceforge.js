@@ -9,7 +9,7 @@
 import { basename } from "path";
 import { appendFileSync, mkdirSync } from "fs";
 import { loadConfig, EVENT_MAP, CONTEXTUAL_EVENTS, FALLBACK_PHRASES } from "./config.js";
-import { extractContext, generatePhraseLlm } from "./llm.js";
+import { extractContext, generatePhrase } from "./llm.js";
 import { speakPhrase } from "./audio.js";
 import { loadPack } from "./packs.js";
 import { STATE_DIR, LOG_FILE } from "./paths.js";
@@ -64,7 +64,7 @@ async function main() {
   if (CONTEXTUAL_EVENTS.has(eventName)) {
     const context = extractContext(eventData);
     if (context) {
-      const result = await generatePhraseLlm(context, config, pack.style, pack.llm_temperature);
+      const result = await generatePhrase(context, config, pack.style, pack.llm_temperature, pack.examples);
       phrase = result.phrase;
       fallbackReason = result.fallbackReason;
       fallbackDetail = result.detail || null;

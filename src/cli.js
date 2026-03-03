@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import { createInterface } from "readline";
 import select from "@inquirer/select";
 import { loadConfig, saveConfig, FALLBACK_PHRASES } from "./config.js";
-import { generatePhraseLlm } from "./llm.js";
+import { generatePhrase } from "./llm.js";
 import { speakPhrase } from "./audio.js";
 import { loadPack, listPacks } from "./packs.js";
 import { formatCost, resetUsage } from "./cost.js";
@@ -94,7 +94,7 @@ async function testPipeline(text) {
   console.log("Generating phrase via LLM...");
 
   const context = `Coding task completed. Assistant's summary: ${text}`;
-  const result = await generatePhraseLlm(context, config, pack.style, pack.llm_temperature);
+  const result = await generatePhrase(context, config, pack.style, pack.llm_temperature, pack.examples);
 
   let phrase;
   if (result.phrase) {

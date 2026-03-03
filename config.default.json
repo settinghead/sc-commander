@@ -1,8 +1,15 @@
 {
   "enabled": true,
   "collect_llm_data": true,
+  "llm_backend": "openrouter",
   "openrouter_api_key": "",
   "openrouter_model": "google/gemma-3-27b-it",
+  "local_api": {
+    "base_url": "http://localhost:8000",
+    "model": "default",
+    "max_tokens": 50,
+    "timeout": 15000
+  },
   "chatterbox_url": "http://localhost:8004",
   "active_pack": "sc2-adjutant",
   "volume": 1.0,

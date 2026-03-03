@@ -3,7 +3,12 @@
   "voice": "voice.wav",
   "echo": true,
   "llm_temperature": 0.9,
-  "style": "Dark, otherworldly, absolute. Cold apex-predator tone. Prefer words like consumed, inevitable, eternal, devoured, annihilated, futile. Examples:\nAll resistance rendered futile\nEvolution cycle absolute\nThe weak code purged\nAnother world consumed\nObstacle annihilated",
+  "style": "Dark, otherworldly, absolute. Cold apex-predator tone. Prefer words like consumed, inevitable, eternal, devoured, annihilated, futile.",
+  "examples": [
+    { "content": "Fixed authentication bug", "format": "status-report", "response": "Flaw in defenses annihilated" },
+    { "content": "Completed database migration", "format": "status-report", "response": "Old structures consumed" },
+    { "content": "Resolved merge conflicts", "format": "status-report", "response": "Resistance rendered futile" }
+  ],
   "fallback_phrases": {
     "session.start": [
       "The swarm is eternal",

@@ -22,14 +22,35 @@ const FORMATS = {
 };
 
 /**
- * Compose a full system prompt from a style string and a format id.
+ * Format examples array into prompt text.
+ * Each example: { content, format?, response }
  *
- * @param {string|null} style  - Character personality text (null → default neutral)
- * @param {string}      formatId - Format key (default: "status-report")
+ * @param {Array|null} examples
+ * @param {string} formatId - only include examples matching this format
+ * @returns {string} Formatted examples block, or empty string
+ */
+function formatExamples(examples, formatId) {
+  if (!Array.isArray(examples) || examples.length === 0) return "";
+  const matching = examples.filter(
+    (ex) => ex.content && ex.response && (!ex.format || ex.format === formatId),
+  );
+  if (matching.length === 0) return "";
+  const lines = matching.map(
+    (ex) => `"${ex.content}" → ${ex.response}`,
+  );
+  return "\n\nExamples:\n" + lines.join("\n");
+}
+
+/**
+ * Compose a full system prompt from a style string, format id, and examples.
+ *
+ * @param {string|null} style     - Character personality text (null → default neutral)
+ * @param {string}      formatId  - Format key (default: "status-report")
+ * @param {Array|null}  examples  - Few-shot examples from pack.json
  * @returns {string} Complete system prompt
  */
-export function buildSystemPrompt(style, formatId = "status-report") {
+export function buildSystemPrompt(style, formatId = "status-report", examples = null) {
   const format = FORMATS[formatId] || FORMATS["status-report"];
   const s = style || DEFAULT_STYLE;
-  return s + "\n\n" + format;
+  return s + "\n\n" + format + formatExamples(examples, formatId);
 }

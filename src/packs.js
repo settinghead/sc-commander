@@ -124,6 +124,7 @@ export function loadPack(config) {
     audio_filter: packData.audio_filter || null,
     post_process: packData.post_process || null,
     style: packData.style || packData.system_prompt || null,
+    examples: packData.examples || null,
     fallback_phrases: packData.fallback_phrases || null,
   };
 }
