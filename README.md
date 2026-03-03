@@ -22,9 +22,9 @@ Voice packs for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) an
 | <img src="assets/sc1-protoss-advisor.jpg" width="48" height="48" /> | `sc1-protoss-advisor` | **Protoss Advisor** | StarCraft | ✅ Available |
 | <img src="assets/ss1-shodan.png" width="48" height="48" /> | `ss1-shodan` | **SHODAN** | System Shock | ✅ Available |
 | <img src="assets/hl-hev-suit.png" width="48" height="48" /> | `hl-hev-suit` | **HEV Suit** | Half-Life | ✅ Available |
-| <img src="assets/glados.png" width="48" height="48" /> | | **GLaDOS** | Portal | 🔜 Planned |
-| <img src="assets/cortana.png" width="48" height="48" /> | | **Cortana** | Halo | 🔜 Planned |
-| <img src="assets/deckard-cain.png" width="48" height="48" /> | | **Deckard Cain** | Diablo | 🔜 Planned |
+
+
+**More coming soon** — [Request a voice](https://github.com/settinghead/voiceforge/issues/new?title=Voice+request%3A+%5BCharacter+Name%5D&body=**Character%3A**+%0A**Game%2FSource%3A**+%0A**Why%3A**+)
 
 ```bash
 voiceforge voice    # interactive picker

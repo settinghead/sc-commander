@@ -52,5 +52,5 @@ function formatExamples(examples, formatId) {
 export function buildSystemPrompt(style, formatId = "status-report", examples = null) {
   const format = FORMATS[formatId] || FORMATS["status-report"];
   const s = style || DEFAULT_STYLE;
-  return s + "\n\n" + format + formatExamples(examples, formatId);
+  return format + "\n\n" + s + formatExamples(examples, formatId);
 }
