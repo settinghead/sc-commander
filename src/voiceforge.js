@@ -7,9 +7,24 @@
  */
 
 import { basename } from "path";
+import { appendFileSync, mkdirSync } from "fs";
 import { loadConfig, EVENT_MAP, CONTEXTUAL_EVENTS, FALLBACK_PHRASES } from "./config.js";
 import { extractContext, generatePhraseLlm } from "./llm.js";
 import { speakPhrase } from "./audio.js";
+import { STATE_DIR, LOG_FILE } from "./paths.js";
+
+function logFallback(eventName, reason, detail) {
+  try {
+    mkdirSync(STATE_DIR, { recursive: true });
+    const ts = new Date().toISOString();
+    const line = detail
+      ? `[${ts}] event=${eventName} reason=${reason} detail=${typeof detail === "string" ? detail : JSON.stringify(detail)}\n`
+      : `[${ts}] event=${eventName} reason=${reason}\n`;
+    appendFileSync(LOG_FILE, line);
+  } catch {
+    // best-effort logging
+  }
+}
 
 async function main() {
   // Read event data from stdin

@@ -56,7 +56,7 @@ export function extractContext(eventData) {
 export function generatePhraseLlm(context, config) {
   return new Promise((resolve) => {
     const apiKey = config.openrouter_api_key || "";
-    if (!apiKey) return resolve(null);
+    if (!apiKey) return resolve({ phrase: null, fallbackReason: "no_api_key" });
 
     const model = config.openrouter_model || "qwen/qwen3.5-flash-02-23";
 
@@ -94,18 +94,22 @@ export function generatePhraseLlm(context, config) {
             // Clean up: remove quotes, punctuation, limit to 8 words
             phrase = phrase.replace(/^["'.,!;:]+|["'.,!;:]+$/g, "").trim();
             const words = phrase.split(/\s+/).slice(0, 8);
-            resolve(words.length ? words.join(" ") : null);
-          } catch {
-            resolve(null);
+            if (words.length) {
+              resolve({ phrase: words.join(" "), fallbackReason: null });
+            } else {
+              resolve({ phrase: null, fallbackReason: "empty_response", detail: result });
+            }
+          } catch (err) {
+            resolve({ phrase: null, fallbackReason: "parse_error", detail: `${err.message}; body=${data.slice(0, 200)}` });
           }
         });
       },
     );
 
-    req.on("error", () => resolve(null));
+    req.on("error", (err) => resolve({ phrase: null, fallbackReason: "request_error", detail: err.message }));
     req.on("timeout", () => {
       req.destroy();
-      resolve(null);
+      resolve({ phrase: null, fallbackReason: "timeout" });
     });
     req.write(payload);
     req.end();
