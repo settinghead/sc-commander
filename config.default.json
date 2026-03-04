@@ -2,8 +2,10 @@
   "enabled": true,
   "collect_llm_data": true,
   "llm_backend": "openrouter",
+  "llm_api_key": "",
+  "llm_model": "",
   "openrouter_api_key": "",
-  "openrouter_model": "google/gemma-3-27b-it",
+  "openrouter_model": "",
   "local_api": {
     "base_url": "http://localhost:8000",
     "model": "default",

@@ -61,13 +61,22 @@ flowchart TD
 
 ## Quick Install
 
+### Option A: npm (recommended)
+
+```bash
+npm install -g voiceforge
+voiceforge setup
+```
+
+### Option B: git clone
+
 ```bash
 git clone https://github.com/settinghead/voiceforge.git
 cd voiceforge
-bash install.sh
+bash install.sh    # launches the setup wizard
 ```
 
-Then edit `~/.claude/hooks/voiceforge/config.json` to add your OpenRouter API key and voice file.
+Both paths run an interactive wizard that configures your LLM provider, API key, voice pack, TTS server, and Claude Code hooks. Run `voiceforge setup` again at any time to reconfigure.
 
 ## OpenClaw Integration
 
@@ -90,14 +99,15 @@ Configuration is shared with the Claude Code installation at `~/.claude/hooks/vo
 
 - **macOS** (uses `afplay` for audio; see Linux note below)
 - **Node.js 18+**
-- **OpenRouter API key** — get one at [openrouter.ai](https://openrouter.ai)
-- **Chatterbox TTS server** — local text-to-speech (see setup below)
+- **LLM API key** — one of: [OpenRouter](https://openrouter.ai) (recommended), [OpenAI](https://platform.openai.com/api-keys), [Google Gemini](https://aistudio.google.com/apikey), or [Anthropic](https://console.anthropic.com/settings/keys). The setup wizard walks you through this, or skip for fallback phrases only.
+- **Chatterbox TTS server** (optional) — local text-to-speech (see setup below)
 
-## Chatterbox TTS Setup
+<details>
+<summary><strong>Chatterbox TTS Setup</strong></summary>
 
 VoiceForge uses [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) for speech synthesis running as a local API server.
 
-### 1. Clone and set up Chatterbox
+#### 1. Clone and set up Chatterbox
 
 ```bash
 git clone https://github.com/resemble-ai/chatterbox.git
@@ -108,13 +118,13 @@ pip install -e .
 pip install fastapi uvicorn
 ```
 
-### 2. Run the server
+#### 2. Run the server
 
 ```bash
 python -m chatterbox.server --port 8004
 ```
 
-### 3. (Optional) Auto-start with launchd (macOS)
+#### 3. (Optional) Auto-start with launchd (macOS)
 
 Create `~/Library/LaunchAgents/com.chatterbox.tts.plist`:
 
@@ -154,30 +164,23 @@ Then load it:
 launchctl load ~/Library/LaunchAgents/com.chatterbox.tts.plist
 ```
 
-## Voice Reference Setup
-
-Chatterbox clones a voice from a reference WAV file. Place your WAV file in the Chatterbox voices directory and set the filename in `config.json`:
-
-```json
-{
-  "voice": "my-voice.wav"
-}
-```
-
-**Note:** Do not commit copyrighted voice samples. Use your own recordings or freely licensed audio.
+</details>
 
 ## Configuration
 
-Edit `~/.claude/hooks/voiceforge/config.json`:
+Configuration lives at `config.json` (run `voiceforge config path` to find it). You can edit it directly or use `voiceforge setup` / `voiceforge config set`.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `enabled` | boolean | `true` | Master on/off switch |
-| `openrouter_api_key` | string | `""` | OpenRouter API key for contextual phrases |
-| `openrouter_model` | string | `"google/gemini-2.0-flash-001"` | LLM model ID |
-| `chatterbox_url` | string | `"http://localhost:8004"` | TTS server URL |
-| `active_pack` | string | `"sc-adjutant"` | Active voice pack ID (see `packs/`) |
-| `voice` | string | `"default.wav"` | Legacy voice reference WAV filename (overridden by pack) |
+| `llm_backend` | string | `"openrouter"` | LLM provider: `openrouter`, `openai`, `gemini`, `anthropic`, or `local` |
+| `llm_api_key` | string | `""` | API key for the chosen LLM provider |
+| `llm_model` | string | `""` | Model ID (empty = provider default) |
+| `openrouter_api_key` | string | `""` | Legacy alias — used when `llm_backend` is `openrouter` and `llm_api_key` is empty |
+| `openrouter_model` | string | `""` | Legacy alias — used when `llm_model` is empty and backend is `openrouter` |
+| `chatterbox_url` | string | `"http://localhost:8004"` | Chatterbox TTS server URL |
+| `tts_backend` | string | `"chatterbox"` | TTS backend: `chatterbox` or `qwen` |
+| `active_pack` | string | `"sc2-adjutant"` | Active voice pack ID (see `packs/`) |
 | `volume` | number | `1.0` | Playback volume (0.0–1.0) |
 | `categories` | object | — | Enable/disable per event category |
 
@@ -186,6 +189,7 @@ You can also use the `/voiceforge-config` slash command in Claude Code to manage
 ## CLI
 
 ```bash
+voiceforge setup                  # Interactive setup wizard (LLM, voice, TTS, hooks)
 voiceforge voice                  # Interactive voice picker (arrow keys + enter)
 voiceforge pack list              # List available voice packs
 voiceforge pack show              # Show active pack details

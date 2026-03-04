@@ -5,6 +5,7 @@ import { request as httpsRequest } from "https";
 import { request as httpRequest } from "http";
 import { COLLECT_DIR, STATE_DIR, USAGE_FILE } from "./paths.js";
 import { buildSystemPrompt } from "./formats.js";
+import { getProvider, getApiKey, getModel, formatRequestBody, parseResponse, getEndpointUrl } from "./providers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -62,53 +63,66 @@ export function extractContext(eventData) {
   return null;
 }
 
-function generatePhraseOpenRouter(context, config, style, llmTemperature, examples) {
+function cleanPhrase(raw) {
+  let phrase = raw.trim().replace(/^["'.,!;:]+|["'.,!;:]+$/g, "").trim();
+  const words = phrase.split(/\s+/).slice(0, 8);
+  return words.length ? words.join(" ") : null;
+}
+
+/**
+ * Generic cloud LLM request — works with any provider in providers.js.
+ */
+function generatePhraseCloud(context, config, style, llmTemperature, examples) {
   return new Promise((resolve) => {
-    const apiKey = config.openrouter_api_key || "";
+    const backendId = config.llm_backend || "openrouter";
+    const provider = getProvider(backendId);
+    if (!provider) return resolve({ phrase: null, fallbackReason: "unknown_provider", detail: backendId });
+
+    const apiKey = getApiKey(config);
     if (!apiKey) return resolve({ phrase: null, fallbackReason: "no_api_key" });
 
-    const model = config.openrouter_model || "qwen/qwen3.5-flash-02-23";
-
+    const model = getModel(config);
     const messages = [
       { role: "system", content: buildSystemPrompt(style, "status-report", examples) },
       { role: "user", content: context },
     ];
+    const temperature = llmTemperature != null ? llmTemperature : 0.9;
+    const payload = formatRequestBody(provider, model, messages, 30, temperature);
 
-    const payload = JSON.stringify({
-      model,
-      messages,
-      max_tokens: 30,
-      temperature: llmTemperature != null ? llmTemperature : 0.9,
-    });
+    let url;
+    try {
+      url = new URL(getEndpointUrl(provider));
+    } catch {
+      return resolve({ phrase: null, fallbackReason: "invalid_base_url", detail: provider.baseUrl });
+    }
 
-    const req = httpsRequest(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(payload),
-        },
-        timeout: 5000,
-      },
+    const authHeaders = provider.authHeader(apiKey);
+    const headers = {
+      ...authHeaders,
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(payload),
+    };
+
+    const isHttps = url.protocol === "https:";
+    const reqFn = isHttps ? httpsRequest : httpRequest;
+
+    const req = reqFn(
+      url,
+      { method: "POST", headers, timeout: 5000 },
       (res) => {
         let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => {
           try {
             const result = JSON.parse(data);
-            const usage = result.usage || null;
-            logUsage(model, usage);
-            let phrase = result.choices[0].message.content.trim();
-            saveLlmPair(messages, phrase, model, config);
-            // Clean up: remove quotes, punctuation, limit to 8 words
-            phrase = phrase.replace(/^["'.,!;:]+|["'.,!;:]+$/g, "").trim();
-            const words = phrase.split(/\s+/).slice(0, 8);
-            if (words.length) {
-              resolve({ phrase: words.join(" "), fallbackReason: null, usage });
+            const parsed = parseResponse(provider, result);
+            logUsage(model, parsed.usage);
+            const phrase = cleanPhrase(parsed.text);
+            saveLlmPair(messages, parsed.text, model, config);
+            if (phrase) {
+              resolve({ phrase, fallbackReason: null, usage: parsed.usage });
             } else {
-              resolve({ phrase: null, fallbackReason: "empty_response", detail: result, usage });
+              resolve({ phrase: null, fallbackReason: "empty_response", detail: result, usage: parsed.usage });
             }
           } catch (err) {
             resolve({ phrase: null, fallbackReason: "parse_error", detail: `${err.message}; body=${data.slice(0, 200)}` });
@@ -175,12 +189,10 @@ function generatePhraseLocal(context, config, style, llmTemperature, examples) {
             const result = JSON.parse(data);
             const usage = result.usage || null;
             logUsage(model, usage);
-            let phrase = result.choices[0].message.content.trim();
-            saveLlmPair(messages, phrase, model, config);
-            phrase = phrase.replace(/^["'.,!;:]+|["'.,!;:]+$/g, "").trim();
-            const words = phrase.split(/\s+/).slice(0, 8);
-            if (words.length) {
-              resolve({ phrase: words.join(" "), fallbackReason: null, usage });
+            const phrase = cleanPhrase(result.choices[0].message.content);
+            saveLlmPair(messages, result.choices[0].message.content, model, config);
+            if (phrase) {
+              resolve({ phrase, fallbackReason: null, usage });
             } else {
               resolve({ phrase: null, fallbackReason: "empty_response", detail: result, usage });
             }
@@ -202,12 +214,12 @@ function generatePhraseLocal(context, config, style, llmTemperature, examples) {
 }
 
 // Backward-compatible export
-export { generatePhraseOpenRouter as generatePhraseLlm };
+export { generatePhraseCloud as generatePhraseLlm };
 
 export function generatePhrase(context, config, style, llmTemperature, examples) {
   const backend = config.llm_backend || "openrouter";
   if (backend === "local") {
     return generatePhraseLocal(context, config, style, llmTemperature, examples);
   }
-  return generatePhraseOpenRouter(context, config, style, llmTemperature, examples);
+  return generatePhraseCloud(context, config, style, llmTemperature, examples);
 }

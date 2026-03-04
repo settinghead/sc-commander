@@ -1,16 +1,28 @@
 {
   "name": "voiceforge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Game character voice notifications for Claude Code",
   "type": "module",
   "bin": {
     "voiceforge": "src/cli.js"
   },
+  "files": [
+    "src/",
+    "packs/*/pack.json",
+    "packs/*/voice.wav",
+    "skills/",
+    "config.default.json",
+    "voiceforge.sh",
+    "LICENSE"
+  ],
   "scripts": {
-    "start": "node src/voiceforge.js"
+    "start": "node src/voiceforge.js",
+    "postinstall": "node src/postinstall.js"
   },
   "license": "MIT",
   "dependencies": {
+    "@inquirer/confirm": "^5.1.0",
+    "@inquirer/input": "^4.1.0",
     "@inquirer/select": "^5.1.0"
   }
 }

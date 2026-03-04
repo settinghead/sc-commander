@@ -61,9 +61,13 @@ fi
 
 echo "  Copied core files to $INSTALL_DIR"
 
-# --- Config ---
+# --- Install npm dependencies ---
+echo "  Installing dependencies..."
+cd "$INSTALL_DIR" && npm install --production --silent 2>/dev/null
+cd "$REPO_DIR"
+
+# --- Config (backfill on update) ---
 if [[ "$IS_UPDATE" == true ]] && [[ -f "$INSTALL_DIR/config.json" ]]; then
-    # Backfill any new keys from template into existing config
     node -e "
 const fs = require('fs');
 const defaults = JSON.parse(fs.readFileSync('$INSTALL_DIR/config.default.json', 'utf-8'));
@@ -83,11 +87,6 @@ for (const [k, v] of Object.entries(defaults)) {
         }
     }
 }
-// Migrate voice -> active_pack if needed
-if (!('active_pack' in current) && 'voice' in current) {
-    current.active_pack = 'sc2-adjutant';
-    changed = true;
-}
 if (changed) {
     fs.writeFileSync('$INSTALL_DIR/config.json', JSON.stringify(current, null, 2) + '\n');
     console.log('  Backfilled new config keys into existing config.json');
@@ -95,95 +94,17 @@ if (changed) {
     console.log('  Existing config.json is up to date');
 }
 "
-else
-    cp "$REPO_DIR/config.default.json" "$INSTALL_DIR/config.json"
-    echo "  Created config.json from template"
 fi
 
 # --- Cache directory ---
 mkdir -p "$INSTALL_DIR/cache"
-echo "  Created cache directory"
 
-# --- Install skill ---
-mkdir -p "$SKILL_DIR"
-if [[ -d "$REPO_DIR/skills/voiceforge-config" ]]; then
-    cp "$REPO_DIR/skills/voiceforge-config/SKILL.md" "$SKILL_DIR/"
-    echo "  Installed skill to $SKILL_DIR"
-fi
-
-# --- Register hooks in settings.json ---
-mkdir -p "$HOME/.claude"
-if [[ ! -f "$SETTINGS_FILE" ]]; then
-    echo '{}' > "$SETTINGS_FILE"
-fi
-
-node -e "
-const fs = require('fs');
-
-const HOOK_CMD = '$INSTALL_DIR/voiceforge.sh';
-
-const HOOKS = {
-    'Stop':               { matcher: '', timeout: 10, async: true },
-    'Notification':       { matcher: '', timeout: 10, async: true },
-    'SessionEnd':         { matcher: '', timeout: 10, async: true },
-    'UserPromptSubmit':   { matcher: '', timeout: 10, async: true },
-    'PermissionRequest':  { matcher: '', timeout: 10, async: true },
-    'PreCompact':         { matcher: '', timeout: 10, async: true },
-};
-
-const settings = JSON.parse(fs.readFileSync('$SETTINGS_FILE', 'utf-8'));
-
-if (!settings.hooks) settings.hooks = {};
-
-for (const [event, cfg] of Object.entries(HOOKS)) {
-    const hookEntry = {
-        type: 'command',
-        command: HOOK_CMD,
-        timeout: cfg.timeout,
-    };
-    if (cfg.async) hookEntry.async = true;
-
-    const matcherBlock = {
-        matcher: cfg.matcher,
-        hooks: [hookEntry],
-    };
-
-    if (!settings.hooks[event]) settings.hooks[event] = [];
-
-    // Remove any existing voiceforge hooks for this event
-    settings.hooks[event] = settings.hooks[event].filter(
-        block => !block.hooks || !block.hooks.some(
-            h => (h.command || '').includes('voiceforge')
-        )
-    );
-
-    settings.hooks[event].push(matcherBlock);
-}
-
-fs.writeFileSync('$SETTINGS_FILE', JSON.stringify(settings, null, 2) + '\n');
-console.log('  Registered hooks for ' + Object.keys(HOOKS).length + ' events in settings.json');
-"
-
-# --- Check Chatterbox TTS ---
+# --- Run setup wizard ---
 echo ""
-if curl -s --connect-timeout 2 "http://localhost:8004/health" &>/dev/null || \
-   curl -s --connect-timeout 2 "http://localhost:8004/" &>/dev/null; then
-    echo "  Chatterbox TTS server detected at localhost:8004"
-else
-    echo "  WARNING: Chatterbox TTS server not detected at localhost:8004"
-    echo "  VoiceForge will use fallback phrases but cannot generate speech."
-    echo "  See README.md for Chatterbox setup instructions."
-fi
+echo "Launching setup wizard..."
+echo ""
+node "$INSTALL_DIR/src/cli.js" setup --from-install-sh
 
-# --- Done ---
 echo ""
-echo "=== Installation Complete ==="
-echo ""
-echo "Next steps:"
-echo "  1. Edit $INSTALL_DIR/config.json"
-echo "     - Set your OpenRouter API key"
-echo "     - Set your voice WAV file name"
-echo "  2. Start Chatterbox TTS server (see README.md)"
-echo "  3. Start a new Claude Code session to hear VoiceForge!"
-echo ""
-echo "To uninstall: bash $INSTALL_DIR/uninstall.sh"
+echo "To reconfigure: node $INSTALL_DIR/src/cli.js setup"
+echo "To uninstall:   bash $INSTALL_DIR/uninstall.sh"

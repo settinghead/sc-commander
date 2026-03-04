@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from "fs";
 import { dirname, join } from "path";
 import { homedir } from "os";
-import { CONFIG_PATH, GLOBAL_USER_CONFIG_PATH } from "./paths.js";
+import { CONFIG_PATH, GLOBAL_USER_CONFIG_PATH, SCRIPT_DIR } from "./paths.js";
 
 // Hook event name -> internal category
 export const EVENT_MAP = {
@@ -187,5 +187,23 @@ export function loadConfig(cwd) {
 }
 
 export function saveConfig(config) {
+  mkdirSync(dirname(CONFIG_PATH), { recursive: true });
   writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n");
+}
+
+/**
+ * Ensure config.json exists — creates from config.default.json template if missing.
+ * Returns the loaded config.
+ */
+export function ensureConfig() {
+  if (!existsSync(CONFIG_PATH)) {
+    const templatePath = join(SCRIPT_DIR, "config.default.json");
+    mkdirSync(dirname(CONFIG_PATH), { recursive: true });
+    if (existsSync(templatePath)) {
+      copyFileSync(templatePath, CONFIG_PATH);
+    } else {
+      writeFileSync(CONFIG_PATH, JSON.stringify({ enabled: true }, null, 2) + "\n");
+    }
+  }
+  return loadConfig();
 }

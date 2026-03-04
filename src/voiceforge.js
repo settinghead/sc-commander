@@ -27,20 +27,11 @@ function logFallback(eventName, reason, detail) {
   }
 }
 
-async function main() {
-  // Read event data from stdin
-  let input = "";
-  for await (const chunk of process.stdin) {
-    input += chunk;
-  }
-
-  let eventData;
-  try {
-    eventData = JSON.parse(input);
-  } catch {
-    return;
-  }
-
+/**
+ * Process a hook event from parsed JSON input.
+ * Exported so it can be called from the CLI `voiceforge hook` command.
+ */
+export async function processHookEvent(eventData) {
   const cwd = eventData.cwd || "";
   const config = loadConfig(cwd || undefined);
   if (config.enabled === false) return;
@@ -95,4 +86,26 @@ async function main() {
   await speakPhrase(phrase, config, pack);
 }
 
-main();
+async function main() {
+  // Read event data from stdin
+  let input = "";
+  for await (const chunk of process.stdin) {
+    input += chunk;
+  }
+
+  let eventData;
+  try {
+    eventData = JSON.parse(input);
+  } catch {
+    return;
+  }
+
+  await processHookEvent(eventData);
+}
+
+// Only run main() when this file is the entry point (not when imported by cli.js)
+const entryUrl = new URL(process.argv[1], "file://").href;
+const thisUrl = new URL(import.meta.url).href;
+if (entryUrl === thisUrl) {
+  main();
+}

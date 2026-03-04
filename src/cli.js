@@ -11,6 +11,7 @@ import { speakPhrase } from "./audio.js";
 import { loadPack, listPacks } from "./packs.js";
 import { formatCost, resetUsage } from "./cost.js";
 import { CONFIG_PATH } from "./paths.js";
+import { processHookEvent } from "./voiceforge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
@@ -19,6 +20,8 @@ const HELP = `
 voiceforge v${pkg.version} — Game character voice notifications for Claude Code
 
 Usage:
+  voiceforge setup               Interactive setup wizard (LLM, voice, TTS, hooks)
+  voiceforge hook                Process a hook event from stdin (used by Claude Code hooks)
   voiceforge config              Show current configuration
   voiceforge config show         Show current configuration
   voiceforge config set <k> <v>  Set a config value (supports categories.X dot notation)
@@ -45,6 +48,9 @@ function maskKey(key) {
 function showConfig() {
   const config = loadConfig(process.cwd());
   const display = { ...config };
+  if (display.llm_api_key) {
+    display.llm_api_key = maskKey(display.llm_api_key);
+  }
   if (display.openrouter_api_key) {
     display.openrouter_api_key = maskKey(display.openrouter_api_key);
   }
@@ -259,6 +265,25 @@ async function setVolume(val) {
   const sub = args[1] || "";
 
   switch (cmd) {
+    case "setup": {
+      const { runSetup } = await import("./setup.js");
+      await runSetup({ fromInstallSh: args.includes("--from-install-sh") });
+      break;
+    }
+
+    case "hook": {
+      // Read stdin and process as a hook event
+      let input = "";
+      for await (const chunk of process.stdin) { input += chunk; }
+      try {
+        const eventData = JSON.parse(input);
+        await processHookEvent(eventData);
+      } catch {
+        // invalid input — ignore silently
+      }
+      break;
+    }
+
     case "config":
       if (sub === "set") {
         configSet(args[2], args.slice(3).join(" "));
