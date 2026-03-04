@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createInterface } from "readline";
@@ -10,7 +10,7 @@ import { generatePhrase } from "./llm.js";
 import { speakPhrase } from "./audio.js";
 import { loadPack, listPacks } from "./packs.js";
 import { formatCost, resetUsage } from "./cost.js";
-import { CONFIG_PATH } from "./paths.js";
+import { CONFIG_PATH, STATE_DIR } from "./paths.js";
 import { processHookEvent } from "./voiceforge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -263,6 +263,15 @@ async function setVolume(val) {
   const args = process.argv.slice(2);
   const cmd = args[0] || "help";
   const sub = args[1] || "";
+
+  // First-run: auto-launch setup wizard if ~/.voiceforge/ doesn't exist
+  const skipWizardCmds = ["setup", "hook", "help", "--help", "-h", "--version", "-v"];
+  if (!skipWizardCmds.includes(cmd) && !existsSync(STATE_DIR)) {
+    console.log("Welcome to VoiceForge! Let's get you set up.\n");
+    const { runSetup } = await import("./setup.js");
+    await runSetup();
+    return;
+  }
 
   switch (cmd) {
     case "setup": {

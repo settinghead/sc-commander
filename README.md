@@ -71,6 +71,8 @@ flowchart TD
 
 ```bash
 npm install -g @settinghead/voiceforge
+```
+```bash
 voiceforge setup
 ```
 
