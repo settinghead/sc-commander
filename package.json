@@ -1,5 +1,5 @@
 {
-  "name": "voiceforge",
+  "name": "@settinghead/voiceforge",
   "version": "0.3.0",
   "description": "Game character voice notifications for Claude Code",
   "type": "module",

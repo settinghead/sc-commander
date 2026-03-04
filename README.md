@@ -70,7 +70,7 @@ flowchart TD
 ### Option A: npm (recommended)
 
 ```bash
-npm install -g voiceforge
+npm install -g @settinghead/voiceforge
 voiceforge setup
 ```
 
