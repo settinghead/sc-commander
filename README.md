@@ -1,6 +1,8 @@
 
 <p align="center">
-  <img src="https://github.com/settinghead/voiceforge/raw/main/assets/demo.mp4" width="100%" />
+  <a href="https://youtu.be/-aiSZnGNyE4">
+    <img src="assets/demo-thumbnail.png" alt="VoiceForge Demo" width="100%" />
+  </a>
 </p>
 
 # VoiceForge
