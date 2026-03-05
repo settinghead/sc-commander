@@ -51,6 +51,7 @@ const handler = async (event: {
 
   const translated: Record<string, unknown> = {
     hook_event_name: hookEventName,
+    source: "openclaw",
   };
 
   if (event.context?.cwd) {

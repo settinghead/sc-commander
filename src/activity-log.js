@@ -20,7 +20,7 @@ function parseLineTime(line) {
 /**
  * Append a line to the activity log. Trims to 30 days and 5MB before appending.
  * No-op if config.logging === false.
- * @param {string} line - Full line including newline (e.g. "[ISO] event=Stop category=task.complete\n")
+ * @param {string} line - Full line including newline (e.g. "[ISO] source=cursor event=Stop category=task.complete phrase=...\n")
  * @param {{ logging?: boolean }} config - Config; only writes when logging !== false
  */
 export function appendLog(line, config) {

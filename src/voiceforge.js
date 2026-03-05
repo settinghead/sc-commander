@@ -46,29 +46,30 @@ function logFallback(eventName, reason, detail) {
  * Exported so it can be called from the CLI `voiceforge hook` command.
  */
 export async function processHookEvent(eventData) {
-  debugLog("processHookEvent entered", { hook_event_name: eventData.hook_event_name, cwd: eventData.cwd });
+  const source = eventData.source || "claude";
+  debugLog("processHookEvent entered", { source, hook_event_name: eventData.hook_event_name, cwd: eventData.cwd });
   const cwd = eventData.cwd || "";
   const config = loadConfig(cwd || undefined);
   if (config.enabled === false) {
-    debugLog("processHookEvent skip: config.enabled === false");
+    debugLog("processHookEvent skip: config.enabled === false", { source });
     return;
   }
 
   const eventName = eventData.hook_event_name || "";
   const category = EVENT_MAP[eventName];
   if (!category) {
-    debugLog("processHookEvent skip: no category for event", { eventName });
+    debugLog("processHookEvent skip: no category for event", { source, eventName });
     return;
   }
 
   // Check if category is enabled
   const categories = config.categories || {};
   if (categories[category] === false) {
-    debugLog("processHookEvent skip: category disabled", { category });
+    debugLog("processHookEvent skip: category disabled", { source, category });
     return;
   }
 
-  debugLog("processHookEvent processing", { eventName, category });
+  debugLog("processHookEvent processing", { source, eventName, category });
   // Load active voice pack
   const pack = loadPack(config);
   const projectName = cwd ? basename(cwd) : "";
@@ -111,9 +112,9 @@ export async function processHookEvent(eventData) {
 
   const packId = config.active_pack || "sc2-adjutant";
   const phraseOneLine = phrase.replace(/\s+/g, " ").slice(0, 120);
-  debugLog("processHookEvent speaking", { phrase: phraseOneLine });
+  debugLog("processHookEvent speaking", { source, phrase: phraseOneLine });
   appendLog(
-    `[${new Date().toISOString()}] event=${eventName} category=${category} phrase=${phraseOneLine}${phrase.length > 120 ? "…" : ""}`,
+    `[${new Date().toISOString()}] source=${source} event=${eventName} category=${category} phrase=${phraseOneLine}${phrase.length > 120 ? "…" : ""}`,
     config,
   );
   showOverlay(phrase, {
@@ -126,7 +127,7 @@ export async function processHookEvent(eventData) {
   });
 
   await speakPhrase(phrase, config, pack);
-  debugLog("processHookEvent done (speakPhrase returned)");
+  debugLog("processHookEvent done (speakPhrase returned)", { source });
 }
 
 async function main() {

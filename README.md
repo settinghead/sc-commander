@@ -190,12 +190,12 @@ Configuration lives at `config.json` (run `voiceforge config path` to find it). 
 | `active_pack` | string | `"sc2-adjutant"` | Active voice pack ID (see `packs/`) |
 | `volume` | number | `1.0` | Playback volume (0.0–1.0) |
 | `categories` | object | — | Enable/disable per event category (see [Integrations and hooks](#integrations-and-hooks)) |
-| `logging` | boolean | `true` | Activity log: one line per event to `~/.voiceforge/voiceforge.log` (retention: 30 days or 5MB, whichever comes first) |
+| `logging` | boolean | `true` | Activity log: one line per event to `~/.voiceforge/voiceforge.log` with `source` (claude/cursor/openclaw), `event`, `category`, `phrase`; retention: 30 days or 5MB |
 | `error_log` | boolean | `false` | Error/fallback log: when LLM fails or no context, append to `~/.voiceforge/fallback.log` |
 
 ### Logging
 
-- **Activity log** (default **on**): Each hook event is written as one line to `~/.voiceforge/voiceforge.log`. Retention is 30 days or 5MB total, whichever is reached first (oldest lines are dropped). Run `voiceforge log` to stream the log live (tail-style). Turn off with `voiceforge log off`, on with `voiceforge log on`.
+- **Activity log** (default **on**): Each hook event is written as one line to `~/.voiceforge/voiceforge.log` with fields `source`, `event`, `category`, and `phrase`. **Source** is `claude`, `cursor`, or `openclaw` so you can see which integration triggered the event. Retention is 30 days or 5MB total, whichever is reached first (oldest lines are dropped). Run `voiceforge log` to stream the log live (tail-style). Turn off with `voiceforge log off`, on with `voiceforge log on`.
 - **Error log** (default **off**): When the LLM is not used or fails (no context, timeout, API error), VoiceForge uses a fallback phrase; if **error log** is enabled, a line is appended to `~/.voiceforge/fallback.log`. Only contextual events (Stop, PostToolUseFailure) produce entries. Turn on with `voiceforge log error on`, off with `voiceforge log error off`. Paths: `voiceforge log path` (activity), `voiceforge log error-path` (error).
 
 You can also use the `/voiceforge-config` slash command in Claude Code to manage configuration interactively.

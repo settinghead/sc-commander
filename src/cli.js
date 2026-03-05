@@ -97,6 +97,7 @@ async function runCursorHook() {
     ...payload,
     hook_event_name: ourEvent,
     cwd,
+    source: "cursor",
   };
   if (ourEvent === "Stop" && payload.transcript_path) {
     const last = getLastAssistantFromTranscript(payload.transcript_path);
@@ -508,6 +509,7 @@ async function runUninstall() {
         mkdirSync(STATE_DIR, { recursive: true });
         appendFileSync(OPENCLAW_DEBUG_LOG, `[${new Date().toISOString()}] voiceforge hook stdin received length=${input.length} raw=${input.slice(0, 200)}\n`);
         const eventData = JSON.parse(input);
+        if (!eventData.source) eventData.source = "claude";
         appendFileSync(OPENCLAW_DEBUG_LOG, `[${new Date().toISOString()}] voiceforge hook parsed eventData ${JSON.stringify(eventData)}\n`);
         await processHookEvent(eventData);
       } catch (err) {
