@@ -160,19 +160,10 @@ function run(argv) {
     contentView.addSubview(subLabel);
   }
 
-  // Show window with fade-in
-  win.setAlphaValue(0);
+  // Show window (skip NSViewAnimation fade-in — in JXA the animation target can be lost/bridge as null)
+  win.setAlphaValue(0.95);
   win.orderFrontRegardless;
 
-  var fadeIn = $.NSDictionary.dictionaryWithObjectsForKeys(
-    [win, $.NSViewAnimationFadeInEffect],
-    [$.NSViewAnimationTargetKey, $.NSViewAnimationEffectKey]
-  );
-  var fadeInAnim = $.NSViewAnimation.alloc.initWithViewAnimations([fadeIn]);
-  fadeInAnim.duration = 0.3;
-  fadeInAnim.startAnimation;
-
-  // Schedule fade-out and dismiss
   var app = $.NSApplication.sharedApplication;
   app.activateIgnoringOtherApps(false);
 
@@ -183,20 +174,13 @@ function run(argv) {
     if ($.NSDate.date.compare(endDate) !== $.NSOrderedAscending) break;
   }
 
-  // Fade out
-  var fadeOut = $.NSDictionary.dictionaryWithObjectsForKeys(
-    [win, $.NSViewAnimationFadeOutEffect],
-    [$.NSViewAnimationTargetKey, $.NSViewAnimationEffectKey]
-  );
-  var fadeOutAnim = $.NSViewAnimation.alloc.initWithViewAnimations([fadeOut]);
-  fadeOutAnim.duration = 0.3;
-  fadeOutAnim.startAnimation;
-
-  // Wait for fade-out to finish
-  var fadeEnd = $.NSDate.dateWithTimeIntervalSinceNow(0.35);
-  while (runLoop.runModeBeforeDate($.NSDefaultRunLoopMode, fadeEnd)) {
-    if ($.NSDate.date.compare(fadeEnd) !== $.NSOrderedAscending) break;
+  // Fade out by animating alpha (avoids NSViewAnimation null-target issue in JXA)
+  var fadeOutEnd = $.NSDate.dateWithTimeIntervalSinceNow(0.35);
+  for (var a = 0.95; a > 0; a -= 0.15) {
+    win.setAlphaValue(Math.max(0, a));
+    runLoop.runModeBeforeDate($.NSDefaultRunLoopMode, $.NSDate.dateWithTimeIntervalSinceNow(0.05));
   }
+  win.setAlphaValue(0);
 
   win.close;
 }

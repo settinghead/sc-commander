@@ -17,6 +17,11 @@ const SLOT_DIR = "/tmp/voiceforge-popups";
 const MAX_SLOTS = 5;
 const STALE_MS = 60_000;
 
+const OVERLAY_DEBUG = process.env.VOICEFORGE_OVERLAY_DEBUG === "1" || process.env.VOICEFORGE_OVERLAY_DEBUG === "true";
+function overlayDebug(msg, ...args) {
+  if (OVERLAY_DEBUG) console.error("[voiceforge overlay]", msg, ...args);
+}
+
 // Default gradient (dark charcoal)
 const DEFAULT_COLORS = [[0.15, 0.15, 0.2], [0.1, 0.1, 0.15]];
 
@@ -101,14 +106,26 @@ function resolveIcon(packId) {
  * @param {Array} [opts.overlayColors] - Gradient colors from pack
  */
 export function showOverlay(phrase, { category, packName, packId, prefix, config, overlayColors } = {}) {
+  overlayDebug("showOverlay called", { phrase: phrase?.slice(0, 40), platform: process.platform, configOverlay: config?.overlay });
+
   // No-op on non-macOS
-  if (process.platform !== "darwin") return;
+  if (process.platform !== "darwin") {
+    overlayDebug("skip: not darwin");
+    return;
+  }
 
   // No-op if overlay disabled
-  if (config && config.overlay === false) return;
+  if (config && config.overlay === false) {
+    overlayDebug("skip: overlay disabled in config");
+    return;
+  }
 
   // No-op if JXA script missing
-  if (!existsSync(JXA_SCRIPT)) return;
+  if (!existsSync(JXA_SCRIPT)) {
+    overlayDebug("skip: JXA script not found", JXA_SCRIPT);
+    return;
+  }
+  overlayDebug("JXA script exists", JXA_SCRIPT);
 
   const dismissSecs = (config && config.overlay_dismiss) || 4;
   const colors = overlayColors || DEFAULT_COLORS;
@@ -129,7 +146,11 @@ export function showOverlay(phrase, { category, packName, packId, prefix, config
 
   // Acquire stacking slot
   const slot = acquireSlot();
-  if (slot < 0) return; // all slots full
+  if (slot < 0) {
+    overlayDebug("skip: no free slot (all slots taken)");
+    return;
+  }
+  overlayDebug("acquired slot", slot);
 
   // Spawn osascript detached
   const args = [
@@ -142,6 +163,7 @@ export function showOverlay(phrase, { category, packName, packId, prefix, config
     String(dismissSecs),
     subtitle,
   ];
+  overlayDebug("spawning osascript", args.slice(0, 4), "...");
 
   try {
     const child = spawn("osascript", args, {
@@ -149,7 +171,9 @@ export function showOverlay(phrase, { category, packName, packId, prefix, config
       detached: true,
     });
     child.unref();
-  } catch {
+    overlayDebug("osascript spawned pid", child.pid);
+  } catch (err) {
+    overlayDebug("osascript spawn failed", err?.message || err);
     // best-effort — don't break audio pipeline
   }
 
