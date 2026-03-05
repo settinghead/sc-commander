@@ -1,0 +1,21 @@
+{
+  "id": "voiceforge",
+  "name": "VoiceForge Notify",
+  "description": "Speak when OpenClaw agent runs complete (e.g. long-running tasks) using VoiceForge character voices.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "minDurationSeconds": {
+        "type": "number",
+        "default": 0,
+        "description": "Only notify for runs lasting at least this many seconds (0 = always notify)"
+      },
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Master switch for VoiceForge notifications"
+      }
+    }
+  }
+}
