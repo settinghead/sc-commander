@@ -72,7 +72,7 @@ flowchart TD
 |--------|-------|---------|-------|
 | **Node.js** | 18+ | 18+ | 18+ |
 | **Audio playback** | Built-in (`afplay`) | [FFmpeg](https://ffmpeg.org/download.html) — `ffplay` on PATH | [FFmpeg](https://ffmpeg.org/) — `ffplay` on PATH |
-| **Audio effects** | [SoX](#installing-sox-optional) (optional) | [SoX](#installing-sox-optional) (optional) | [SoX](#installing-sox-optional) (optional) |
+| **Audio effects** | [SoX](docs/installing-sox.md) (optional) | [SoX](docs/installing-sox.md) (optional) | [SoX](docs/installing-sox.md) (optional) |
 
 <details>
 <summary><strong>Installing SoX (optional)</strong></summary>
