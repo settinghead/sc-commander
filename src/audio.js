@@ -128,10 +128,33 @@ function applyEcho(cachePath, customAudioFilter) {
   }
 }
 
+/**
+ * Return { cmd, args } to play a WAV file, or null if no player for this platform.
+ * - darwin: afplay (macOS)
+ * - win32: ffplay (FFmpeg) — install FFmpeg and add to PATH
+ * - linux: ffplay, else paplay (PulseAudio) or pw-play (PipeWire)
+ */
+function getPlaybackCommand(platform, volume, cachePath) {
+  const vol = Math.max(0, Math.min(1, volume));
+  if (platform === "darwin") {
+    return { cmd: "afplay", args: ["-v", String(vol), cachePath] };
+  }
+  if (platform === "win32") {
+    return { cmd: "ffplay", args: ["-nodisp", "-autoexit", "-loglevel", "quiet", cachePath] };
+  }
+  if (platform === "linux") {
+    return { cmd: "ffplay", args: ["-nodisp", "-autoexit", "-loglevel", "quiet", cachePath] };
+  }
+  return null;
+}
+
 function playFile(cachePath, volume) {
   return new Promise((resolve) => {
     if (!existsSync(cachePath)) return resolve();
-    const proc = spawn("afplay", ["-v", String(volume), cachePath], {
+    const platform = process.platform;
+    const spec = getPlaybackCommand(platform, volume, cachePath);
+    if (!spec) return resolve();
+    const proc = spawn(spec.cmd, spec.args, {
       stdio: ["ignore", "ignore", "ignore"],
     });
     proc.on("error", () => resolve());

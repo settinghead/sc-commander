@@ -68,8 +68,8 @@ flowchart TD
 
 ## Prerequisites
 
-- **macOS** (uses `afplay` for audio; see Linux note below)
 - **Node.js 18+**
+- **OS**: macOS, Windows, or Linux (audio playback and overlay support vary — see below)
 - **LLM API key** — one of: [OpenRouter](https://openrouter.ai) (recommended), [OpenAI](https://platform.openai.com/api-keys), [Google Gemini](https://aistudio.google.com/apikey), or [Anthropic](https://console.anthropic.com/settings/keys). The setup wizard walks you through this, or skip for fallback phrases only.
 - **A TTS backend** (at least one):
 
@@ -313,15 +313,15 @@ Additional hook events (e.g. SubagentStart) are registered in Claude Code but us
 
 ## Linux Support
 
-VoiceForge prefers `ffplay` (from FFmpeg) for audio playback with echo effects, falling back to `afplay` (macOS). On Linux, install FFmpeg for `ffplay` support, or edit `src/voiceforge.js` to use your preferred player:
+- **Audio**: VoiceForge uses **ffplay** (from [FFmpeg](https://ffmpeg.org/)) for playback. Install FFmpeg and ensure `ffplay` is on your PATH.
+- **Overlay**: On-screen popup notifications are macOS-only; on Linux you get voice only.
 
-```javascript
-// In playCached(), replace the afplay fallback with:
-// PulseAudio:
-spawn("paplay", [cachePath], { stdio: ["ignore", "ignore", "ignore"] });
-// PipeWire:
-spawn("pw-play", [cachePath], { stdio: ["ignore", "ignore", "ignore"] });
-```
+## Windows Support
+
+- **Install**: Use `npm install -g @settinghead/voiceforge` (or clone the repo and `npm install`). The bash `install.sh` script is for macOS/Linux; on Windows, configure Cursor/Claude Code hooks to point at `voiceforge hook` / `voiceforge cursor-hook` (see Cursor/Claude docs).
+- **Audio**: VoiceForge uses **ffplay** (from [FFmpeg](https://ffmpeg.org/)) for playback. Install [FFmpeg for Windows](https://ffmpeg.org/download.html) and add it to your PATH so `ffplay` is available. Without it, the rest of the pipeline runs (LLM, TTS, cache) but you won’t hear audio.
+- **Overlay**: On-screen popup notifications are **macOS-only**; on Windows you get voice only (when ffplay is installed).
+- **Echo/normalize**: Same as other platforms — FFmpeg and SoX (optional) for effects. Install if you want echo and volume normalization.
 
 ## Uninstall
 
