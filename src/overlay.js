@@ -96,8 +96,8 @@ function resolveIcon(packId) {
 
 /**
  * Show an overlay notification.
- *
- * Fire-and-forget — spawns osascript detached and returns immediately.
+ * Never throws — any failure is caught and logged; the rest of the pipeline (e.g. audio) continues.
+ * Fire-and-forget: spawns osascript (macOS) or uses node-notifier and returns immediately.
  *
  * @param {string} phrase - The phrase to display
  * @param {object} opts
@@ -116,6 +116,14 @@ export function showOverlay(phrase, { category, packName, packId, prefix, config
     return;
   }
 
+  try {
+    runOverlay(phrase, { category, packName, packId, prefix, config, overlayColors });
+  } catch (err) {
+    overlayDebug("notification failed (non-fatal)", err?.message || err);
+  }
+}
+
+function runOverlay(phrase, { packName, packId, prefix, config, overlayColors } = {}) {
   const platform = process.platform;
   const style = config?.overlay_style || "custom";
 
@@ -126,7 +134,7 @@ export function showOverlay(phrase, { category, packName, packId, prefix, config
   let subtitle = "";
   const parts = [];
   if (prefix) parts.push(prefix);
-  if (packName) parts.push(packName.toUpperCase());
+  if (packName) parts.push(String(packName).toUpperCase());
   subtitle = parts.join("  ·  ");
   let displayPhrase = phrase;
   if (prefix && phrase.startsWith(prefix + "; ")) {
