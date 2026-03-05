@@ -26,6 +26,7 @@
   "dependencies": {
     "@inquirer/confirm": "^5.1.0",
     "@inquirer/input": "^4.1.0",
-    "@inquirer/select": "^5.1.0"
+    "@inquirer/select": "^5.1.0",
+    "node-notifier": "^10.0.1"
   }
 }

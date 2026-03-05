@@ -39,6 +39,7 @@ Usage:
   voiceforge pack use <pack-id>  Switch active voice pack
   voiceforge volume              Show current volume and prompt for new value
   voiceforge volume <0-100>      Set playback volume (0 = mute, 100 = max)
+  voiceforge notification        Choose notification style (popup / system / off)
   voiceforge test "<text>"       Run full pipeline: LLM -> TTS -> audio playback
   voiceforge cost                Show accumulated token usage and estimated cost
   voiceforge cost reset          Clear the usage log
@@ -388,6 +389,42 @@ async function setVolume(val) {
   console.log(`Volume set to ${num}%`);
 }
 
+/** Notification style: "custom" | "system" | "off". Platform-specific choices via inquirer. */
+async function notificationPick() {
+  const config = loadConfig(process.cwd());
+  const platform = process.platform;
+  const currentOverlay = config.overlay !== false;
+  const currentStyle = config.overlay_style || "custom";
+
+  const choices =
+    platform === "darwin"
+      ? [
+          { value: "custom", name: "Custom overlay (popup)", description: "In-app style popup with gradient and icon" },
+          { value: "system", name: "System notification", description: "macOS Notification Center" },
+          { value: "off", name: "Off", description: "No popup, voice only" },
+        ]
+      : [
+          { value: "system", name: "System notification", description: platform === "win32" ? "Windows toast" : "notify-send / system tray" },
+          { value: "off", name: "Off", description: "No popup, voice only" },
+        ];
+
+  const currentValue =
+    !currentOverlay ? "off" : platform === "darwin" ? currentStyle : currentOverlay ? "system" : "off";
+
+  const chosen = await select({
+    message: "Notification style",
+    choices,
+    default: currentValue,
+  });
+
+  config.overlay = chosen !== "off";
+  if (chosen !== "off") config.overlay_style = chosen;
+  saveConfig(config);
+
+  const labels = { custom: "Custom overlay", system: "System notification", off: "Off" };
+  console.log(`Notifications: ${labels[chosen]}`);
+}
+
 // --- Main ---
 (async () => {
   const args = process.argv.slice(2);
@@ -395,7 +432,7 @@ async function setVolume(val) {
   const sub = args[1] || "";
 
   // First-run: auto-launch setup wizard if ~/.voiceforge/ doesn't exist
-  const skipWizardCmds = ["setup", "hook", "cursor-hook", "log", "help", "--help", "-h", "--version", "-v"];
+  const skipWizardCmds = ["setup", "hook", "cursor-hook", "log", "notification", "help", "--help", "-h", "--version", "-v"];
   if (!skipWizardCmds.includes(cmd) && !existsSync(STATE_DIR)) {
     console.log("Welcome to VoiceForge! Let's get you set up.\n");
     const { runSetup } = await import("./setup.js");
@@ -478,6 +515,11 @@ async function setVolume(val) {
     case "volume":
     case "vol":
       await setVolume(args[1]);
+      break;
+
+    case "notification":
+    case "notify":
+      await notificationPick();
       break;
 
     case "voice":

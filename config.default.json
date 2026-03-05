@@ -21,6 +21,7 @@
   "error_log": false,
   "overlay": true,
   "overlay_dismiss": 4,
+  "overlay_style": "custom",
   "categories": {
     "session.start": true,
     "session.end": true,

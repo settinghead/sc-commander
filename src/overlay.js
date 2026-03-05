@@ -1,15 +1,18 @@
 /**
- * VoiceForge — On-screen overlay notification wrapper.
+ * VoiceForge — On-screen notification wrapper.
  *
- * Spawns a native macOS Cocoa overlay via JXA (osascript -l JavaScript).
- * No-op on non-darwin platforms or when overlay is disabled in config.
+ * - macOS: Custom Cocoa overlay via JXA (overlay.jxa) — gradient, icon, stacking.
+ * - Windows/Linux: System notifications via node-notifier (native toasts / notify-send).
+ * No-op when overlay is disabled in config.
  */
 
 import { join, dirname } from "path";
 import { existsSync, mkdirSync, rmdirSync, readdirSync, statSync } from "fs";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
+const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT_DIR = dirname(__dirname);
 const JXA_SCRIPT = join(__dirname, "overlay.jxa");
@@ -108,19 +111,52 @@ function resolveIcon(packId) {
 export function showOverlay(phrase, { category, packName, packId, prefix, config, overlayColors } = {}) {
   overlayDebug("showOverlay called", { phrase: phrase?.slice(0, 40), platform: process.platform, configOverlay: config?.overlay });
 
-  // No-op on non-macOS
-  if (process.platform !== "darwin") {
-    overlayDebug("skip: not darwin");
-    return;
-  }
-
-  // No-op if overlay disabled
   if (config && config.overlay === false) {
     overlayDebug("skip: overlay disabled in config");
     return;
   }
 
-  // No-op if JXA script missing
+  const platform = process.platform;
+  const style = config?.overlay_style || "custom";
+
+  // Use system notification (node-notifier) when style is "system" or on non-darwin (no custom option there)
+  const useSystem = style === "system" || platform === "win32" || platform === "linux";
+
+  // Build subtitle and display phrase (shared)
+  let subtitle = "";
+  const parts = [];
+  if (prefix) parts.push(prefix);
+  if (packName) parts.push(packName.toUpperCase());
+  subtitle = parts.join("  ·  ");
+  let displayPhrase = phrase;
+  if (prefix && phrase.startsWith(prefix + "; ")) {
+    displayPhrase = phrase.slice(prefix.length + 2);
+  }
+  const iconPath = resolveIcon(packId);
+
+  // --- System notification (node-notifier): Windows, Linux, or macOS when overlay_style === "system" ---
+  if (useSystem) {
+    try {
+      const notifier = require("node-notifier");
+      notifier.notify({
+        title: subtitle || "VoiceForge",
+        message: displayPhrase || phrase,
+        icon: iconPath || undefined,
+        sound: false,
+      });
+      overlayDebug("node-notifier sent");
+    } catch (err) {
+      overlayDebug("node-notifier failed", err?.message || err);
+    }
+    return;
+  }
+
+  // --- macOS only: custom JXA overlay (when overlay_style === "custom") ---
+  if (platform !== "darwin") {
+    overlayDebug("skip: unsupported platform");
+    return;
+  }
+
   if (!existsSync(JXA_SCRIPT)) {
     overlayDebug("skip: JXA script not found", JXA_SCRIPT);
     return;
@@ -129,20 +165,6 @@ export function showOverlay(phrase, { category, packName, packId, prefix, config
 
   const dismissSecs = (config && config.overlay_dismiss) || 4;
   const colors = overlayColors || DEFAULT_COLORS;
-  const iconPath = resolveIcon(packId);
-
-  // Build subtitle: "prefix · PACK_NAME"
-  let subtitle = "";
-  const parts = [];
-  if (prefix) parts.push(prefix);
-  if (packName) parts.push(packName.toUpperCase());
-  subtitle = parts.join("  ·  ");
-
-  // Strip prefix from phrase for display (it's shown in subtitle)
-  let displayPhrase = phrase;
-  if (prefix && phrase.startsWith(prefix + "; ")) {
-    displayPhrase = phrase.slice(prefix.length + 2);
-  }
 
   // Acquire stacking slot
   const slot = acquireSlot();

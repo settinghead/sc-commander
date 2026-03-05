@@ -68,10 +68,22 @@ flowchart TD
 
 ## Prerequisites
 
-- **Node.js 18+**
-- **OS**: macOS, Windows, or Linux (audio playback and overlay support vary — see below)
+| Aspect | macOS | Windows | Linux |
+|--------|-------|---------|-------|
+| **Node.js** | 18+ | 18+ | 18+ |
+| **Audio playback** | Built-in (`afplay`) | [FFmpeg](https://ffmpeg.org/download.html) — `ffplay` on PATH | [FFmpeg](https://ffmpeg.org/) — `ffplay` on PATH |
+| **Echo / normalize** | FFmpeg + SoX (optional) | FFmpeg + SoX (optional) | FFmpeg + SoX (optional) |
+| **Install method** | `install.sh` or npm | npm only (no bash script) | `install.sh` or npm |
+
+> **🔔 Visual notifications** — VoiceForge shows a popup with each phrase (no extra install). On **macOS** you can use a custom overlay or the system Notification Center; on **Windows/Linux** you get system toasts. Turn notifications off or switch style anytime with:
+> ```bash
+> voiceforge notification
+> ```
+
+**All platforms**
+
 - **LLM API key** — one of: [OpenRouter](https://openrouter.ai) (recommended), [OpenAI](https://platform.openai.com/api-keys), [Google Gemini](https://aistudio.google.com/apikey), or [Anthropic](https://console.anthropic.com/settings/keys). The setup wizard walks you through this, or skip for fallback phrases only.
-- **A TTS backend** (at least one):
+- **TTS backend** (at least one):
 
 | Backend | Best for | Requirements |
 |---|---|---|
@@ -311,17 +323,10 @@ Event categories apply to Claude Code, Cursor, and OpenClaw where the correspond
 
 Additional hook events (e.g. SubagentStart) are registered in Claude Code but use the closest matching category.
 
-## Linux Support
+## Platform notes
 
-- **Audio**: VoiceForge uses **ffplay** (from [FFmpeg](https://ffmpeg.org/)) for playback. Install FFmpeg and ensure `ffplay` is on your PATH.
-- **Overlay**: On-screen popup notifications are macOS-only; on Linux you get voice only.
-
-## Windows Support
-
-- **Install**: Use `npm install -g @settinghead/voiceforge` (or clone the repo and `npm install`). The bash `install.sh` script is for macOS/Linux; on Windows, configure Cursor/Claude Code hooks to point at `voiceforge hook` / `voiceforge cursor-hook` (see Cursor/Claude docs).
-- **Audio**: VoiceForge uses **ffplay** (from [FFmpeg](https://ffmpeg.org/)) for playback. Install [FFmpeg for Windows](https://ffmpeg.org/download.html) and add it to your PATH so `ffplay` is available. Without it, the rest of the pipeline runs (LLM, TTS, cache) but you won’t hear audio.
-- **Overlay**: On-screen popup notifications are **macOS-only**; on Windows you get voice only (when ffplay is installed).
-- **Echo/normalize**: Same as other platforms — FFmpeg and SoX (optional) for effects. Install if you want echo and volume normalization.
+- **Windows**: Use `npm install -g @settinghead/voiceforge` (or clone + `npm install`). The `install.sh` script is Unix-only; configure Cursor/Claude Code hooks to call `voiceforge hook` / `voiceforge cursor-hook` manually (see Cursor/Claude docs). Audio needs FFmpeg (`ffplay`) on PATH. Notifications use **node-notifier** (included) — Windows 8+ toasts or taskbar balloons.
+- **Linux**: Same as Prerequisites table. Audio: `ffplay` on PATH. Notifications use **node-notifier** (included) — `notify-osd` or `libnotify-bin` (Ubuntu usually has one).
 
 ## Uninstall
 

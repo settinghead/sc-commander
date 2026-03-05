@@ -90,6 +90,7 @@ const PROJECT_OVERRIDE_FIELDS = new Set([
   "qwen_tts_url",
   "overlay",
   "overlay_dismiss",
+  "overlay_style",
   "logging",
   "error_log",
 ]);
