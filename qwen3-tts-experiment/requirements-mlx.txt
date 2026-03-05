@@ -1,0 +1,5 @@
+# MLX backend (Apple Silicon only). Install after requirements.txt:
+# pip install -r requirements-mlx.txt
+mlx>=0.31.0
+mlx-audio>=0.3.1
+mlx-lm>=0.30.5

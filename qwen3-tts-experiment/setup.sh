@@ -3,6 +3,10 @@
 # First-time setup for the Qwen3-TTS experiment server.
 # Creates a venv, installs dependencies, and downloads models.
 #
+# PyTorch (MPS on Mac, CUDA on Linux/Windows): uses the same HuggingFace
+# models — setup downloads them below. MLX (Apple Silicon only): uses a
+# different 8-bit model, downloaded automatically when you run with MLX.
+#
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -20,11 +24,7 @@ fail()  { echo "${bold}${red}==> ${reset}${bold}$*${reset}"; exit 1; }
 # ── Pre-flight checks ───────────────────────────────────────────────────────
 info "Checking prerequisites…"
 
-# Apple Silicon
 arch=$(uname -m)
-if [[ "$arch" != "arm64" ]]; then
-    fail "Apple Silicon (arm64) required — detected $arch."
-fi
 echo "  Architecture: $arch"
 
 # Python 3.13+
@@ -49,13 +49,19 @@ fi
 source venv/bin/activate
 
 # ── Install dependencies ─────────────────────────────────────────────────────
-info "Installing Python dependencies (this may take a few minutes)…"
+info "Installing Python dependencies (PyTorch backend; same models for MPS and CUDA)…"
 pip install --upgrade pip -q
 pip install -r requirements.txt -q
+
+# MLX is Apple Silicon only; optional for PyTorch+MPS/CUDA
+if [[ "$arch" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
+    info "Installing MLX backend (Apple Silicon)…"
+    pip install -r requirements-mlx.txt -q
+fi
 echo "  Done."
 
 # ── Download models ──────────────────────────────────────────────────────────
-info "Downloading PyTorch models…"
+info "Downloading PyTorch models (used for both MPS and CUDA)…"
 mkdir -p models
 
 download_model() {
@@ -86,23 +92,32 @@ fi
 # ── Verify imports ───────────────────────────────────────────────────────────
 info "Verifying key imports…"
 python3 -c "
-import mlx.core; print(f'  mlx {mlx.core.__version__}')
 import torch; print(f'  torch {torch.__version__}')
-from mlx_audio.tts.utils import load_model; print('  mlx_audio OK')
 from qwen_tts import Qwen3TTSModel; print('  qwen_tts OK')
 import soundfile; print('  soundfile OK')
 import fastapi; print('  fastapi OK')
 "
+if [[ "$arch" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
+    python3 -c "
+import mlx.core; print(f'  mlx {mlx.core.__version__}')
+from mlx_audio.tts.utils import load_model; print('  mlx_audio OK')
+"
+fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 info "Setup complete!"
 echo ""
-echo "  Start the server (MLX backend — default):"
-echo "    ${bold}./run.sh${reset}"
-echo ""
-echo "  Or use the PyTorch backend:"
-echo "    ${bold}QWEN_TTS_RUNTIME=pytorch ./run.sh${reset}"
+if [[ "$arch" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "  Start the server (MLX backend — default on Apple Silicon):"
+    echo "    ${bold}./run.sh${reset}"
+    echo ""
+    echo "  Or use the PyTorch backend (MPS):"
+    echo "    ${bold}QWEN_TTS_RUNTIME=pytorch ./run.sh${reset}"
+else
+    echo "  Start the server (PyTorch backend; uses CUDA if available):"
+    echo "    ${bold}QWEN_TTS_RUNTIME=pytorch ./run.sh${reset}"
+fi
 echo ""
 echo "  Test it:"
 echo "    ${bold}curl -X POST http://localhost:8100/tts \\${reset}"

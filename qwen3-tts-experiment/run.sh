@@ -2,6 +2,13 @@
 cd "$(dirname "$0")"
 source venv/bin/activate
 
+# Default: MLX on Apple Silicon, PyTorch elsewhere (CUDA/MPS/CPU)
+if [[ "$(uname -m)" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
+    export QWEN_TTS_RUNTIME=${QWEN_TTS_RUNTIME:-mlx}
+else
+    export QWEN_TTS_RUNTIME=${QWEN_TTS_RUNTIME:-pytorch}
+fi
+
 MAX_RESTARTS=10
 COOLDOWN=3
 restarts=0

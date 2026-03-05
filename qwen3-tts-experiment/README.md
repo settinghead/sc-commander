@@ -38,11 +38,13 @@ curl -X POST http://localhost:8100/tts \
 
 ## Backends
 
-| Backend | Best for | Runtime flag |
-|---------|-----------|--------------|
-| **MLX** | Apple Silicon Macs (quantized, fast) | `QWEN_TTS_RUNTIME=mlx` (default) |
-| **PyTorch + MPS** | Apple Silicon Macs (full precision) | `QWEN_TTS_RUNTIME=pytorch` on macOS |
-| **PyTorch + CUDA** | Linux/Windows with NVIDIA GPU | `QWEN_TTS_RUNTIME=pytorch` when CUDA is available |
+| Backend | Best for | Runtime flag | Models |
+|---------|----------|--------------|--------|
+| **MLX** | Apple Silicon Macs (quantized, fast) | `QWEN_TTS_RUNTIME=mlx` (default on Mac) | Different 8-bit model; **downloaded automatically** when the server starts with MLX |
+| **PyTorch + MPS** | Apple Silicon Macs (full precision) | `QWEN_TTS_RUNTIME=pytorch` on macOS | Same as CUDA — see below |
+| **PyTorch + CUDA** | Linux/Windows with NVIDIA GPU | `QWEN_TTS_RUNTIME=pytorch` when CUDA is available | **Same** HuggingFace models as MPS; `./setup.sh` downloads them |
+
+**PyTorch (MPS and CUDA)** use the same model checkpoints (`Qwen/Qwen3-TTS-12Hz-1.7B-Base` and optionally `0.6B`). No separate download for CUDA — run `./setup.sh` once; it downloads the PyTorch models and works on both Apple (MPS) and Linux/Windows (CUDA). **MLX** uses a different, quantized model and fetches it on first run.
 
 The server chooses PyTorch device automatically: CUDA if available, else MPS (Apple), else CPU.
 
