@@ -25,6 +25,9 @@ A FastAPI server that uses [Qwen3-TTS](https://huggingface.co/Qwen/Qwen3-TTS-12H
 # 2. Start the server (MLX backend by default on Mac; see Backends below)
 ./run.sh
 
+# Or run it from a uv-managed environment
+uv run ./run.sh
+
 # 3. Point VoiceForge at it
 voiceforge config set tts_backend qwen
 ```
@@ -113,19 +116,18 @@ curl http://localhost:8100/health | python3 -m json.tool
 | Script | Purpose |
 |--------|---------|
 | `server.py` | FastAPI TTS server (the main application) |
-| `run.sh` | Activates venv and starts the server |
-| `setup.sh` | First-time setup: venv, deps, model download |
+| `run.sh` | Starts the server using `venv/bin/python`, `python`, or `python3` |
+| `setup.sh` | First-time setup: creates or repairs `venv`, installs deps, downloads models |
 | `test_clone.py` | Generate a single voice-cloned WAV for one pack. Usage: `python test_clone.py [pack_id] [text]` |
 | `batch_clone.py` | Generate voice-cloned WAVs for 9 predefined packs with character-appropriate lines |
 | `benchmark.py` | Benchmark generation time vs text length across packs. Usage: `python benchmark.py [1.7B\|0.6B]` |
 | `transcribe_packs.py` | Transcribe all voice pack WAVs using Whisper (`base.en`) and write `ref_text` into each `pack.json` |
 | `transcribe_packs_v2.py` | Same as above but uses Whisper `medium.en` for higher accuracy |
 
-The test/benchmark scripts use the **PyTorch** backend directly (not the server). Activate the venv first:
+The test/benchmark scripts use the **PyTorch** backend directly (not the server). Use the venv interpreter directly:
 
 ```bash
-source venv/bin/activate
-python test_clone.py sc2-kerrigan "Evolution is inevitable."
+./venv/bin/python test_clone.py sc2-kerrigan "Evolution is inevitable."
 ```
 
 ## Voice packs
