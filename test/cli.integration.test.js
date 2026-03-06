@@ -18,9 +18,14 @@ function createCliFixture() {
   mkdirSync(homeDir, { recursive: true });
   mkdirSync(join(homeDir, ".voiceforge"), { recursive: true });
 
-  for (const entry of ["src", "packs", "package.json", "config.json", "config.default.json"]) {
+  for (const entry of ["src", "packs", "package.json", "config.default.json"]) {
     cpSync(join(REPO_CLI_DIR, entry), join(cliDir, entry), { recursive: true });
   }
+
+  cpSync(
+    join(REPO_CLI_DIR, "config.default.json"),
+    join(cliDir, "config.json"),
+  );
 
   symlinkSync(join(REPO_CLI_DIR, "node_modules"), join(cliDir, "node_modules"), "dir");
 
