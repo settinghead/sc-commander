@@ -4,4 +4,5 @@ llm_collect/
 .sound.pid
 node_modules/
 *.log
+.volume
 .DS_Store

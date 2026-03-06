@@ -1,7 +1,8 @@
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from "fs";
 import { join, resolve } from "path";
 import { execSync } from "child_process";
-import { PACKS_DIR } from "./paths.js";
+import { createHash } from "crypto";
+import { PACKS_DIR, PACK_VOLUME_CACHE_DIR } from "./paths.js";
 
 // Target mean volume in dBFS — voices are normalized to this level
 const TARGET_MEAN_DB = -16;
@@ -26,16 +27,30 @@ function analyzeVolume(wavPath) {
 
 /**
  * Get volume offset in dB for a pack's voice file.
- * Caches result in .volume file next to voice.wav.
+ * Caches result in ~/.voiceforge/pack-volume/<pack-id>.json.
  */
-function getVolumeOffsetDb(voicePath, packDir) {
+function getVolumeOffsetDb(voicePath, packId) {
   if (!voicePath || !existsSync(voicePath)) return 0;
 
+  let stats;
+  try {
+    stats = statSync(voicePath);
+  } catch {
+    return 0;
+  }
+
+  const voiceKey = createHash("sha1").update(voicePath).digest("hex");
+
   // Check cache
-  const cachePath = join(packDir, ".volume");
+  const cachePath = join(PACK_VOLUME_CACHE_DIR, `${packId || "_legacy"}.json`);
   try {
     const cached = JSON.parse(readFileSync(cachePath, "utf-8"));
-    if (cached.voicePath === voicePath && typeof cached.offsetDb === "number") {
+    if (
+      cached.voiceKey === voiceKey &&
+      cached.mtimeMs === Math.round(stats.mtimeMs) &&
+      cached.size === stats.size &&
+      typeof cached.offsetDb === "number"
+    ) {
       return cached.offsetDb;
     }
   } catch {
@@ -48,7 +63,17 @@ function getVolumeOffsetDb(voicePath, packDir) {
 
   const offsetDb = Math.round((TARGET_MEAN_DB - meanDb) * 10) / 10;
   try {
-    writeFileSync(cachePath, JSON.stringify({ voicePath, meanDb, offsetDb }) + "\n");
+    mkdirSync(PACK_VOLUME_CACHE_DIR, { recursive: true });
+    writeFileSync(
+      cachePath,
+      JSON.stringify({
+        voiceKey,
+        mtimeMs: Math.round(stats.mtimeMs),
+        size: stats.size,
+        meanDb,
+        offsetDb,
+      }) + "\n",
+    );
   } catch {
     // best-effort caching
   }
@@ -119,7 +144,7 @@ export function loadPack(config) {
     name: packData.name || packId,
     echo: packData.echo !== false,
     voicePath,
-    volumeOffsetDb: getVolumeOffsetDb(voicePath, packDir),
+    volumeOffsetDb: getVolumeOffsetDb(voicePath, packId),
     tts_params: packData.tts_params || null,
     audio_filter: packData.audio_filter || null,
     post_process: packData.post_process || null,

@@ -69,6 +69,25 @@ const CODEX_NOTIFY_TYPE_TO_EVENT = {
   "agent-turn-complete": "Stop",
 };
 
+function appendHookDebugLine(message) {
+  try {
+    mkdirSync(STATE_DIR, { recursive: true });
+    appendFileSync(HOOK_DEBUG_LOG, `[${new Date().toISOString()}] ${message}\n`);
+  } catch {
+    // best-effort
+  }
+}
+
+function stringifyForLog(value, limit = 1000) {
+  try {
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    if (typeof text !== "string") return String(value);
+    return text.length > limit ? `${text.slice(0, limit)}…` : text;
+  } catch {
+    return String(value);
+  }
+}
+
 function normalizeCodexInputMessages(payload) {
   const value = payload["input-messages"] || payload.input_messages || payload.inputMessages;
   if (!Array.isArray(value)) return [];
@@ -129,19 +148,26 @@ async function runCursorHook() {
 }
 
 async function runCodexNotify() {
-  const raw = process.argv[2];
+  const argvTail = process.argv.slice(3);
+  const rawArg = argvTail[0] === "--" ? argvTail[1] : argvTail[0];
+  const raw = typeof rawArg === "string" ? rawArg : "";
+  appendHookDebugLine(`voiceforge codex-notify argv_tail=${stringifyForLog(argvTail)} raw=${stringifyForLog(raw)}`);
   if (!raw || typeof raw !== "string") {
+    appendHookDebugLine("voiceforge codex-notify exiting: missing raw payload");
     process.exit(0);
   }
   let payload;
   try {
     payload = JSON.parse(raw);
-  } catch {
+    appendHookDebugLine(`voiceforge codex-notify parsed payload ${stringifyForLog(payload)}`);
+  } catch (err) {
+    appendHookDebugLine(`voiceforge codex-notify parse error ${err && err.message}`);
     process.exit(0);
   }
   const codexType = payload.type || "";
   const ourEvent = CODEX_NOTIFY_TYPE_TO_EVENT[codexType];
   if (!ourEvent) {
+    appendHookDebugLine(`voiceforge codex-notify exiting: unsupported type=${codexType || "(empty)"}`);
     process.exit(0);
   }
   const cwd = payload.cwd || "";
@@ -154,9 +180,12 @@ async function runCodexNotify() {
     codex_thread_id: payload["thread-id"] || payload.thread_id || "",
     codex_turn_id: payload["turn-id"] || payload.turn_id || "",
   };
+  appendHookDebugLine(`voiceforge codex-notify translated event ${stringifyForLog(translated)}`);
   try {
     await processHookEvent(translated);
-  } catch {
+    appendHookDebugLine(`voiceforge codex-notify processHookEvent completed type=${codexType} event=${ourEvent}`);
+  } catch (err) {
+    appendHookDebugLine(`voiceforge codex-notify processHookEvent error ${err && err.message}`);
     // best-effort: exit 0 so Codex doesn't treat as failure
   }
   process.exit(0);
@@ -556,17 +585,13 @@ async function runUninstall() {
       let input = "";
       for await (const chunk of process.stdin) { input += chunk; }
       try {
-        mkdirSync(STATE_DIR, { recursive: true });
-        appendFileSync(HOOK_DEBUG_LOG, `[${new Date().toISOString()}] voiceforge hook stdin received length=${input.length} raw=${input.slice(0, 200)}\n`);
+        appendHookDebugLine(`voiceforge hook stdin received length=${input.length} raw=${stringifyForLog(input, 200)}`);
         const eventData = JSON.parse(input);
         if (!eventData.source) eventData.source = "claude";
-        appendFileSync(HOOK_DEBUG_LOG, `[${new Date().toISOString()}] voiceforge hook parsed eventData ${JSON.stringify(eventData)}\n`);
+        appendHookDebugLine(`voiceforge hook parsed eventData ${stringifyForLog(eventData)}`);
         await processHookEvent(eventData);
       } catch (err) {
-        try {
-          mkdirSync(STATE_DIR, { recursive: true });
-          appendFileSync(HOOK_DEBUG_LOG, `[${new Date().toISOString()}] voiceforge hook parse/process error ${err && err.message}\n`);
-        } catch {}
+        appendHookDebugLine(`voiceforge hook parse/process error ${err && err.message}`);
         // invalid input — ignore silently
       }
       break;

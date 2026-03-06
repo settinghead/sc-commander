@@ -36,3 +36,4 @@ export const LOG_FILE = join(STATE_DIR, "fallback.log");
 export const MAIN_LOG_FILE = join(STATE_DIR, "voiceforge.log");
 export const HOOK_DEBUG_LOG = join(STATE_DIR, "hook-debug.log");
 export const USAGE_FILE = join(STATE_DIR, "usage.jsonl");
+export const PACK_VOLUME_CACHE_DIR = join(STATE_DIR, "pack-volume");
