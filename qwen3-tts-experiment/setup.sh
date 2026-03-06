@@ -8,7 +8,8 @@
 # different 8-bit model, downloaded automatically when you run with MLX.
 #
 set -euo pipefail
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # ── Colours ──────────────────────────────────────────────────────────────────
 bold=$(tput bold 2>/dev/null || true)
@@ -40,23 +41,36 @@ fi
 echo "  Python: $py_version"
 
 # ── Virtual environment ──────────────────────────────────────────────────────
+if [[ -d venv ]] && [[ ! -x venv/bin/python3 ]] && [[ ! -x venv/bin/python ]]; then
+    warn "Existing virtual environment looks stale — recreating it."
+    rm -rf venv
+fi
+
 if [[ -d venv ]]; then
     info "Virtual environment already exists — skipping creation."
 else
     info "Creating virtual environment…"
     python3 -m venv venv
 fi
-source venv/bin/activate
+
+if [[ -x venv/bin/python3 ]]; then
+    VENV_PYTHON="venv/bin/python3"
+elif [[ -x venv/bin/python ]]; then
+    VENV_PYTHON="venv/bin/python"
+else
+    fail "Virtual environment was created, but no Python interpreter was found in venv/bin/."
+fi
+VENV_PIP="venv/bin/pip"
 
 # ── Install dependencies ─────────────────────────────────────────────────────
 info "Installing Python dependencies (PyTorch backend; same models for MPS and CUDA)…"
-pip install --upgrade pip -q
-pip install -r requirements.txt -q
+"$VENV_PIP" install --upgrade pip -q
+"$VENV_PIP" install -r requirements.txt -q
 
 # MLX is Apple Silicon only; optional for PyTorch+MPS/CUDA
 if [[ "$arch" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
     info "Installing MLX backend (Apple Silicon)…"
-    pip install -r requirements-mlx.txt -q
+    "$VENV_PIP" install -r requirements-mlx.txt -q
 fi
 echo "  Done."
 
@@ -72,7 +86,7 @@ download_model() {
         return
     fi
     echo "  Downloading $repo …"
-    python3 -c "
+    "$VENV_PYTHON" -c "
 from huggingface_hub import snapshot_download
 snapshot_download('$repo', local_dir='$dest')
 "
@@ -91,14 +105,14 @@ fi
 
 # ── Verify imports ───────────────────────────────────────────────────────────
 info "Verifying key imports…"
-python3 -c "
+"$VENV_PYTHON" -c "
 import torch; print(f'  torch {torch.__version__}')
 from qwen_tts import Qwen3TTSModel; print('  qwen_tts OK')
 import soundfile; print('  soundfile OK')
 import fastapi; print('  fastapi OK')
 "
 if [[ "$arch" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
-    python3 -c "
+    "$VENV_PYTHON" -c "
 import mlx.core; print(f'  mlx {mlx.core.__version__}')
 from mlx_audio.tts.utils import load_model; print('  mlx_audio OK')
 "
