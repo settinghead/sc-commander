@@ -7,7 +7,7 @@
 
 # VoiceForge
 
-LLM-generated voice notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Cursor](https://cursor.com/docs/agent/hooks), and [OpenClaw](https://openclaw.dev), spoken by game characters like the StarCraft Adjutant, Kerrigan, C&C EVA, SHODAN, and more.
+LLM-generated voice notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Cursor](https://cursor.com/docs/agent/hooks), [OpenAI Codex](https://developers.openai.com/codex/), and [OpenClaw](https://openclaw.dev), spoken by game characters like the StarCraft Adjutant, Kerrigan, C&C EVA, SHODAN, and more.
 
 ### Why VoiceForge?
 
@@ -43,6 +43,7 @@ flowchart TD
     A1[Claude Code Hook] --> B[voiceforge.sh]
     A2[OpenClaw Plugin] --> B
     A3[Cursor Hook] --> B
+    A4[Codex notify] --> B
     B --> C[src/voiceforge.js]
     C --> D{Event type?}
     D -- "Contextual (e.g. Stop)" --> E[LLM<br><i>generate in-character phrase</i>]
@@ -58,7 +59,7 @@ flowchart TD
     J --> K[afplay / ffplay]
 ```
 
-1. A hook event fires (from Claude Code, Cursor, or OpenClaw via plugin) — `voiceforge.sh` or `voiceforge cursor-hook` (or the OpenClaw plugin) passes it to `src/voiceforge.js`
+1. A hook event fires (from Claude Code, Cursor, Codex notify, or OpenClaw via plugin) — `voiceforge.sh` or `voiceforge cursor-hook` or `voiceforge codex-notify` (or the OpenClaw plugin) passes it to `src/voiceforge.js`
 2. The event is mapped to a category and the active voice pack is loaded
 3. Contextual events (e.g. task completion) send context to the configured LLM, which generates a short in-character phrase; other events use predefined fallback phrases from the pack
 4. The phrase is sent to the configured TTS backend (Chatterbox or Qwen3-TTS) for local speech synthesis with per-pack voice cloning parameters
@@ -119,6 +120,10 @@ The setup wizard configures your LLM provider, API key, **voice pack download** 
 
 VoiceForge supports [OpenClaw](https://openclaw.dev) via a **plugin** that notifies you when agent runs complete (especially long-running tasks). Install and configure it separately. See **[OpenClaw integration](docs/openclaw.md)** for installation, config, and troubleshooting.
 
+## Codex Integration
+
+VoiceForge works with [OpenAI Codex](https://developers.openai.com/codex/) via Codex’s **notify** config: when an agent turn completes, Codex runs `voiceforge codex-notify` with a JSON payload and you hear a character voice summary. See **[Codex integration](docs/codex.md)** for setup (`notify = ["voiceforge", "codex-notify"]` in `~/.codex/config.toml`), config, and troubleshooting.
+
 ## Cursor Integration
 
 VoiceForge works with [Cursor](https://cursor.com/docs/agent/hooks) Agent (Cmd+K / Agent Chat). Install hooks during setup:
@@ -176,18 +181,18 @@ Configuration lives at `config.json` (run `voiceforge config path` to find it). 
 
 ### Logging
 
-- **Activity log** (default **on**): Each hook event is written as one line to `~/.voiceforge/voiceforge.log` with fields `source`, `event`, `category`, and `phrase`. **Source** is `claude`, `cursor`, or `openclaw` so you can see which integration triggered the event. Retention is 30 days or 5MB total, whichever is reached first (oldest lines are dropped). Run `voiceforge log` to stream the log live (tail-style). Turn off with `voiceforge log off`, on with `voiceforge log on`. Debug logging for all hook sources is written to `~/.voiceforge/hook-debug.log`.
+- **Activity log** (default **on**): Each hook event is written as one line to `~/.voiceforge/voiceforge.log` with fields `source`, `event`, `category`, and `phrase`. **Source** is `claude`, `cursor`, `codex`, or `openclaw` so you can see which integration triggered the event. Retention is 30 days or 5MB total, whichever is reached first (oldest lines are dropped). Run `voiceforge log` to stream the log live (tail-style). Turn off with `voiceforge log off`, on with `voiceforge log on`. Debug logging for all hook sources is written to `~/.voiceforge/hook-debug.log`.
 - **Error log** (default **off**): When the LLM is not used or fails (no context, timeout, API error), VoiceForge uses a fallback phrase; if **error log** is enabled, a line is appended to `~/.voiceforge/fallback.log`. Only contextual events (Stop, PostToolUseFailure) produce entries. Turn on with `voiceforge log error on`, off with `voiceforge log error off`. Paths: `voiceforge log path` (activity), `voiceforge log error-path` (error).
 
 You can also use the `/voiceforge-config` slash command in Claude Code to manage configuration interactively.
 
 ### Integrations and hooks
 
-- **Which platforms (Claude Code, Cursor, OpenClaw)?**  
-  You choose during **setup**: Step 5 asks “Which platforms do you want to install hooks for?” with a **checkbox** for **Claude Code** and **Cursor**. For **OpenClaw**, install the plugin separately — see [OpenClaw integration](docs/openclaw.md). Run `voiceforge setup` again to add hooks for a platform you skipped. To **disable** an integration (stop VoiceForge from that platform without changing others), remove that platform’s hooks: run `voiceforge uninstall` to remove Claude Code and Cursor hooks, or edit the platform config by hand (`~/.claude/settings.json`, `~/.cursor/hooks.json`). There is no per-integration on/off in config — only the global **`enabled`** flag turns all VoiceForge processing on or off.
+- **Which platforms (Claude Code, Cursor, Codex, OpenClaw)?**  
+  You choose during **setup**: Step 5 asks “Which platforms do you want to install hooks for?” with a **checkbox** for **Claude Code** and **Cursor**. For **OpenClaw**, install the plugin separately — see [OpenClaw integration](docs/openclaw.md). For **Codex**, add `notify = ["voiceforge", "codex-notify"]` to `~/.codex/config.toml` — see [Codex integration](docs/codex.md). Run `voiceforge setup` again to add hooks for a platform you skipped. To **disable** an integration (stop VoiceForge from that platform without changing others), remove that platform’s hooks: run `voiceforge uninstall` to remove Claude Code and Cursor hooks, or edit the platform config by hand (`~/.claude/settings.json`, `~/.cursor/hooks.json`). There is no per-integration on/off in config — only the global **`enabled`** flag turns all VoiceForge processing on or off.
 
 - **Which hook events (categories)?**  
-  Each platform registers a fixed set of hook events. You can turn **categories** on or off so that certain event types are ignored. Categories are shared across all platforms (same setting for Claude Code, Cursor, and OpenClaw). Set them in config or via CLI:
+  Each platform registers a fixed set of hook events. You can turn **categories** on or off so that certain event types are ignored. Categories are shared across all platforms (same setting for Claude Code, Cursor, Codex, and OpenClaw). Set them in config or via CLI:
 
   ```bash
   voiceforge config set categories.task.complete true
@@ -203,6 +208,7 @@ You can also use the `/voiceforge-config` slash command in Claude Code to manage
 voiceforge setup                  # Interactive setup wizard (LLM, voice, TTS, hooks)
 voiceforge hook                   # Process hook event from stdin (Claude Code)
 voiceforge cursor-hook            # Process hook event from stdin (Cursor)
+voiceforge codex-notify           # Process notify payload from argv (Codex)
 voiceforge voice                  # Interactive voice picker (arrow keys + enter)
 voiceforge pack list              # List available voice packs
 voiceforge pack show              # Show active pack details
@@ -225,7 +231,7 @@ voiceforge --version              # Show version
 
 ## Event Categories
 
-Event categories apply to Claude Code, Cursor, and OpenClaw (plugin) where the corresponding hook or event exists.
+Event categories apply to Claude Code, Cursor, Codex, and OpenClaw (plugin) where the corresponding hook or event exists.
 
 | Category | Hook Event | Description | Default |
 |---|---|---|---|

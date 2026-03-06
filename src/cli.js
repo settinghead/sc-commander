@@ -29,6 +29,7 @@ Usage:
   voiceforge setup               Interactive setup wizard (LLM, voice, TTS, hooks)
   voiceforge hook                Process a hook event from stdin (used by Claude Code hooks)
   voiceforge cursor-hook         Process a hook event from stdin (used by Cursor hooks)
+  voiceforge codex-notify        Process a notify payload from argv (used by OpenAI Codex notify)
   voiceforge config              Show current configuration
   voiceforge config show         Show current configuration
   voiceforge config set <k> <v>  Set a config value (supports categories.X dot notation)
@@ -60,6 +61,11 @@ const CURSOR_TO_VOICEFORGE_EVENT = {
   stop: "Stop",
   postToolUseFailure: "PostToolUseFailure",
   preCompact: "PreCompact",
+};
+
+// Codex notify type -> VoiceForge event (only agent-turn-complete is supported for now)
+const CODEX_NOTIFY_TYPE_TO_EVENT = {
+  "agent-turn-complete": "Stop",
 };
 
 function getLastAssistantFromTranscript(transcriptPath) {
@@ -113,6 +119,37 @@ async function runCursorHook() {
     // best-effort: still return {} so Cursor doesn't error
   }
   process.stdout.write("{}\n");
+}
+
+async function runCodexNotify() {
+  const raw = process.argv[2];
+  if (!raw || typeof raw !== "string") {
+    process.exit(0);
+  }
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    process.exit(0);
+  }
+  const codexType = payload.type || "";
+  const ourEvent = CODEX_NOTIFY_TYPE_TO_EVENT[codexType];
+  if (!ourEvent) {
+    process.exit(0);
+  }
+  const cwd = payload.cwd || "";
+  const translated = {
+    hook_event_name: ourEvent,
+    cwd,
+    source: "codex",
+    last_assistant_message: payload["last-assistant-message"] || payload.last_assistant_message || "",
+  };
+  try {
+    await processHookEvent(translated);
+  } catch {
+    // best-effort: exit 0 so Codex doesn't treat as failure
+  }
+  process.exit(0);
 }
 
 const TAIL_LINES = 100;
@@ -477,13 +514,13 @@ async function runUninstall() {
   // Start upgrade check in background when interactive (don't block command)
   const interactiveUpgrade =
     process.stdout.isTTY &&
-    !["hook", "cursor-hook"].includes(cmd);
+    !["hook", "cursor-hook", "codex-notify"].includes(cmd);
   const upgradePromise = interactiveUpgrade
     ? getUpgradeInfo(pkg.version, pkg.name)
     : null;
 
   // First-run: auto-launch setup wizard if ~/.voiceforge/ doesn't exist
-  const skipWizardCmds = ["setup", "hook", "cursor-hook", "log", "notification", "uninstall", "help", "--help", "-h", "--version", "-v"];
+  const skipWizardCmds = ["setup", "hook", "cursor-hook", "codex-notify", "log", "notification", "uninstall", "help", "--help", "-h", "--version", "-v"];
   if (!skipWizardCmds.includes(cmd) && !existsSync(STATE_DIR)) {
     console.log("Welcome to VoiceForge! Let's get you set up.\n");
     const { runSetup } = await import("./setup.js");
@@ -521,6 +558,11 @@ async function runUninstall() {
 
     case "cursor-hook": {
       await runCursorHook();
+      break;
+    }
+
+    case "codex-notify": {
+      await runCodexNotify();
       break;
     }
 
