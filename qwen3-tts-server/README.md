@@ -32,7 +32,7 @@ uv run ./run.sh
 voiceforge config set tts_backend qwen
 ```
 
-**Windows:** The scripts above are bash (e.g. `setup.sh`, `run.sh`). Use **WSL** or **Git Bash** to run them, or do the steps manually: create a venv, `pip install -r requirements.txt`, download the PyTorch models (see Troubleshooting → "Model not found"), then run `python server.py` with `QWEN_TTS_RUNTIME=pytorch` and ensure the voiceforge `packs/` directory is available (e.g. clone the full voiceforge repo and run the server from `qwen3-tts-experiment`).
+**Windows:** The scripts above are bash (e.g. `setup.sh`, `run.sh`). Use **WSL** or **Git Bash** to run them, or do the steps manually: create a venv, `pip install -r requirements.txt`, download the PyTorch models (see Troubleshooting → "Model not found"), then run `python server.py` with `QWEN_TTS_RUNTIME=pytorch` and ensure the voiceforge `packs/` directory is available (e.g. clone the full voiceforge repo and run the server from `qwen3-tts-server`).
 
 Generate speech directly:
 

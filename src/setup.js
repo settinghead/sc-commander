@@ -412,7 +412,7 @@ export async function runSetup() {
   } else {
     console.log("\n  No TTS server detected. VoiceForge will still work with fallback phrases.");
     console.log("  To set up Chatterbox TTS later, see: https://github.com/resemble-ai/chatterbox");
-    console.log("  To set up Qwen TTS, see the qwen3-tts-experiment/ directory.\n");
+    console.log("  To set up Qwen TTS, see the qwen3-tts-server/ directory.\n");
   }
 
   // --- Step 6: Hooks (platforms) ---
