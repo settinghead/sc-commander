@@ -268,7 +268,7 @@ export async function runSetup() {
       process.stdout.write("  Validating key... ");
       const result = await validateApiKey(chosenProvider, apiKey);
       if (result.ok) {
-        console.log(color("valid!", ANSI.green) + "\n");
+        console.log("valid!\n");
       } else {
         console.log(`could not validate (${result.error || "unknown error"})`);
         const proceed = await confirm({
@@ -351,7 +351,7 @@ export async function runSetup() {
     process.stdout.write(`  Downloading ${label}... `);
     try {
       await downloadPack(packId, baseUrl);
-      console.log(color("done.", ANSI.green));
+      console.log("done.");
     } catch (err) {
       console.log(`failed (${err.message}).`);
     }
@@ -516,7 +516,7 @@ export async function runSetup() {
 
   // --- Summary ---
   console.log("");
-  console.log(color("=== Setup Complete ===", ANSI.bold));
+  console.log(highlight("=== Setup Complete ==="));
   console.log("");
   printStatus("Config", CONFIG_PATH);
   if (chosenProvider !== "skip") {
