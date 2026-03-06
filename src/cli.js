@@ -38,6 +38,8 @@ Usage:
   voxlert config local              Show local (project) config for current directory
   voxlert config local set <k> <v>  Set a value in .voxlert.json in the current directory
   voxlert config local path         Print path to local config file
+  voxlert config source <name>              Show overrides for a source (cursor, claude, codex)
+  voxlert config source <name> set <k> <v> Set a per-source override (supports categories.X dot notation)
   voxlert log                  Stream activity log (tail -f style)
   voxlert log path            Print activity log file path
   voxlert log error-path      Print error/fallback log file path
@@ -298,6 +300,37 @@ function showConfig() {
     display.openrouter_api_key = maskKey(display.openrouter_api_key);
   }
   console.log(JSON.stringify(display, null, 2));
+}
+
+function configSetSource(name, key, value) {
+  if (!name || !key) {
+    console.error("Usage: voxlert config source <name> set <key> <value>");
+    process.exit(1);
+  }
+
+  let coerced = value;
+  if (value === "null") coerced = null;
+  else if (value === "true") coerced = true;
+  else if (value === "false") coerced = false;
+  else if (value !== "" && !isNaN(Number(value))) coerced = Number(value);
+
+  const config = loadConfig(process.cwd());
+  if (!config.sources) config.sources = {};
+  if (!config.sources[name] || typeof config.sources[name] !== "object") config.sources[name] = {};
+
+  const src = config.sources[name];
+  const dotIdx = key.indexOf(".");
+  if (dotIdx !== -1) {
+    const parent = key.slice(0, dotIdx);
+    const child = key.slice(dotIdx + 1);
+    if (!src[parent] || typeof src[parent] !== "object") src[parent] = {};
+    src[parent][child] = coerced;
+  } else {
+    src[key] = coerced;
+  }
+
+  saveConfig(config);
+  console.log(`Set sources.${name}.${key} = ${JSON.stringify(coerced)}`);
 }
 
 function configSetLocal(key, value) {
@@ -692,6 +725,19 @@ async function runUninstall() {
             console.log(readFileSync(localPath, "utf-8"));
           } else {
             console.log("No local config found in", process.cwd());
+          }
+        }
+      } else if (sub === "source") {
+        const srcName = args[2];
+        if (args[3] === "set") {
+          configSetSource(srcName, args[4], args.slice(5).join(" "));
+        } else {
+          const cfg = loadConfig(process.cwd());
+          const srcCfg = (cfg.sources || {})[srcName];
+          if (srcCfg) {
+            console.log(JSON.stringify(srcCfg, null, 2));
+          } else {
+            console.log(`No source overrides configured for "${srcName}"`);
           }
         }
       } else if (sub === "path") {
