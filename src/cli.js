@@ -23,7 +23,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
 
 const HELP = `
-voiceforge v${pkg.version} — Game character voice notifications for Claude Code, Cursor, and OpenClaw
+voiceforge v${pkg.version} — Game character voice notifications for Claude Code, Cursor, Codex, and OpenClaw
 
 Usage:
   voiceforge setup               Interactive setup wizard (LLM, voice, TTS, hooks)
@@ -67,6 +67,12 @@ const CURSOR_TO_VOICEFORGE_EVENT = {
 const CODEX_NOTIFY_TYPE_TO_EVENT = {
   "agent-turn-complete": "Stop",
 };
+
+function normalizeCodexInputMessages(payload) {
+  const value = payload["input-messages"] || payload.input_messages || payload.inputMessages;
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => typeof item === "string" && item.trim());
+}
 
 function getLastAssistantFromTranscript(transcriptPath) {
   try {
@@ -143,6 +149,9 @@ async function runCodexNotify() {
     cwd,
     source: "codex",
     last_assistant_message: payload["last-assistant-message"] || payload.last_assistant_message || "",
+    input_messages: normalizeCodexInputMessages(payload),
+    codex_thread_id: payload["thread-id"] || payload.thread_id || "",
+    codex_turn_id: payload["turn-id"] || payload.turn_id || "",
   };
   try {
     await processHookEvent(translated);

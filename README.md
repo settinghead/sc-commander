@@ -122,7 +122,7 @@ VoiceForge supports [OpenClaw](https://openclaw.dev) via a **plugin** that notif
 
 ## Codex Integration
 
-VoiceForge works with [OpenAI Codex](https://developers.openai.com/codex/) via Codex’s **notify** config: when an agent turn completes, Codex runs `voiceforge codex-notify` with a JSON payload and you hear a character voice summary. See **[Codex integration](docs/codex.md)** for setup (`notify = ["voiceforge", "codex-notify"]` in `~/.codex/config.toml`), config, and troubleshooting.
+VoiceForge works with [OpenAI Codex](https://developers.openai.com/codex/) via Codex’s **notify** config: when an agent turn completes, Codex runs `voiceforge codex-notify` with a JSON payload and you hear a character voice summary. VoiceForge uses `last-assistant-message` when present and falls back to `input-messages` if needed. See **[Codex integration](docs/codex.md)** for setup (`notify = ["voiceforge", "codex-notify"]` in `~/.codex/config.toml`), config, and troubleshooting.
 
 ## Cursor Integration
 

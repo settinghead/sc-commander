@@ -57,6 +57,10 @@ export function extractContext(eventData) {
     if (msg) {
       return `${msg.slice(0, 300)}`;
     }
+    const inputMessages = Array.isArray(eventData.input_messages) ? eventData.input_messages : [];
+    if (inputMessages.length > 0) {
+      return inputMessages.join(" ").slice(0, 300);
+    }
     return null;
   }
 

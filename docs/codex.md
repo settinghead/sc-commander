@@ -12,7 +12,7 @@ VoiceForge can speak when an [OpenAI Codex](https://developers.openai.com/codex/
 
 1. Codex emits a notify event (currently **agent-turn-complete**) and invokes your configured command with a **single JSON argument**.
 2. VoiceForge's `voiceforge codex-notify` command parses that JSON and maps `agent-turn-complete` to the **Stop** (task complete) event.
-3. VoiceForge uses `last-assistant-message` from the payload as context for the LLM to generate an in-character phrase, then TTS and playback (same pipeline as Cursor/Claude Code).
+3. VoiceForge uses `last-assistant-message` from the payload as context for the LLM to generate an in-character phrase, then TTS and playback (same pipeline as Cursor/Claude Code). If that field is missing, it falls back to `input-messages`.
 
 Supported notify type:
 
@@ -63,10 +63,13 @@ Codex sends a single JSON object. Fields VoiceForge uses:
 | Field                   | Use |
 |-------------------------|-----|
 | `type`                  | Must be `agent-turn-complete` to trigger speech |
-| `last-assistant-message`| Context for LLM phrase (task complete summary) |
+| `last-assistant-message`| Preferred context for the LLM phrase (task complete summary) |
+| `input-messages`        | Fallback context if `last-assistant-message` is empty |
 | `cwd`                   | Working directory (for project config / prefix) |
 
-Other fields (e.g. `thread-id`, `turn-id`, `input-messages`) are in the payload but not used by VoiceForge. See [Advanced Configuration – Notifications](https://developers.openai.com/codex/config-advanced/) for the full schema.
+Other common fields such as `thread-id` and `turn-id` are present in the payload but not otherwise used by VoiceForge. See [Advanced Configuration – Notifications](https://developers.openai.com/codex/config-advanced/) for the full schema.
+
+OpenAI's Codex advanced config docs currently describe `notify` as receiving a single JSON argument and list `type`, `thread-id`, `turn-id`, `cwd`, `input-messages`, and `last-assistant-message` as common fields. They also note that `agent-turn-complete` is the only supported notify event at the moment.
 
 ## Disable
 
@@ -87,6 +90,7 @@ Other fields (e.g. `thread-id`, `turn-id`, `input-messages`) are in the payload 
 - **Test manually**
   - Run: `voiceforge codex-notify '{"type":"agent-turn-complete","last-assistant-message":"Test summary.","cwd":"/tmp"}'`
   - You should hear a phrase (and see a notification if enabled). If that works, the issue is likely Codex's PATH or config.
+  - Fallback path: `voiceforge codex-notify '{"type":"agent-turn-complete","input-messages":["Summarize the repo status."],"cwd":"/tmp"}'`
 
 ## Uninstall
 
