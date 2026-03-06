@@ -56,10 +56,6 @@ function rgb(r, g, b) {
   return `\x1b[38;2;${r};${g};${b}m`;
 }
 
-function bgRgb(r, g, b) {
-  return `\x1b[48;2;${r};${g};${b}m`;
-}
-
 function interpolate(a, b, t) {
   return Math.round(a + (b - a) * t);
 }
@@ -69,25 +65,29 @@ function animatedLogoLine(text, phase = 0, shimmerIndex = -1) {
   const chars = [...text];
   const last = Math.max(chars.length - 1, 1);
   return chars.map((ch, index) => {
-    const t = (index / last) * Math.PI * 2 + phase;
-    let r = Math.round(160 + 95 * Math.sin(t));
-    let g = Math.round(90 + 80 * Math.sin(t + Math.PI / 2));
-    let b = Math.round(185 + 70 * Math.sin(t + Math.PI));
-    let bgR = Math.round(50 + 38 * Math.sin(t - Math.PI / 3));
-    let bgG = Math.round(18 + 18 * Math.sin(t + Math.PI / 2));
-    let bgB = Math.round(60 + 54 * Math.sin(t + Math.PI / 3));
+    if (ch === " ") return ch;
+    const raw = (index / last) + phase;
+    const wrapped = raw - Math.floor(raw);
+    let r;
+    let g;
+    let b;
+    if (wrapped < 0.5) {
+      const local = wrapped / 0.5;
+      r = interpolate(255, 255, local);
+      g = interpolate(90, 0, local);
+      b = interpolate(120, 170, local);
+    } else {
+      const local = (wrapped - 0.5) / 0.5;
+      r = interpolate(255, 70, local);
+      g = interpolate(0, 220, local);
+      b = interpolate(170, 255, local);
+    }
     if (Math.abs(index - shimmerIndex) <= 1) {
       r = Math.min(255, r + 70);
       g = Math.min(255, g + 70);
       b = Math.min(255, b + 70);
-      bgR = Math.min(255, bgR + 28);
-      bgG = Math.min(255, bgG + 28);
-      bgB = Math.min(255, bgB + 28);
     }
-    if (ch === " ") {
-      return `${bgRgb(bgR, bgG, bgB)} ${ANSI.reset}`;
-    }
-    return `${bgRgb(bgR, bgG, bgB)}${rgb(r, g, b)}${ANSI.bold}${ch}${ANSI.reset}`;
+    return `${rgb(r, g, b)}${ANSI.bold}${ch}${ANSI.reset}`;
   }).join("") + ANSI.reset;
 }
 
@@ -102,7 +102,7 @@ function renderLogoFrame(config, shimmerStep = -1) {
   const glow = color("SYNTHETIC VOICE NOTIFICATIONS FOR AGENT WORKFLOWS", ANSI.cyan);
   const logo = LOGO_LINES.map((line, index) => {
     const shimmerIndex = shimmerStep >= 0 ? shimmerStep - index * 3 : -1;
-    const phase = shimmerStep >= 0 ? shimmerStep * 0.18 + index * 0.35 : index * 0.35;
+    const phase = shimmerStep >= 0 ? shimmerStep * 0.015 + index * 0.02 : index * 0.02;
     return centerLine(animatedLogoLine(line, phase, shimmerIndex), 92);
   });
   return [
