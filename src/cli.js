@@ -88,6 +88,12 @@ function stringifyForLog(value, limit = 1000) {
   }
 }
 
+function isPromptAbort(err) {
+  const name = err && typeof err.name === "string" ? err.name : "";
+  const message = err && typeof err.message === "string" ? err.message : "";
+  return name === "ExitPromptError" || message.includes("User force closed the prompt");
+}
+
 function normalizeCodexInputMessages(payload) {
   const value = payload["input-messages"] || payload.input_messages || payload.inputMessages;
   if (!Array.isArray(value)) return [];
@@ -721,4 +727,11 @@ async function runUninstall() {
       // non-fatal: ignore
     }
   }
-})();
+})().catch((err) => {
+  if (isPromptAbort(err)) {
+    process.stdout.write("\n");
+    process.exit(130);
+  }
+  console.error(err && err.stack ? err.stack : String(err));
+  process.exit(1);
+});
