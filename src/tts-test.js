@@ -218,8 +218,12 @@ export async function verifyTtsSetup(config, backend) {
       continue;
     }
 
-    const heardVoice = await confirm({
+    const heardVoice = await select({
       message: `Did you hear the ${label} voice test?`,
+      choices: [
+        { name: "Yes", value: true },
+        { name: "No", value: false },
+      ],
       default: true,
     });
 
