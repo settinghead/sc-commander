@@ -66,16 +66,12 @@ Always run `voxlert config show` first to see what is currently set. If the user
 | "enable permission alerts" | `voxlert config set categories.input.required true` |
 | "set any other field" | `voxlert config set <key> <value>` |
 
-For **project scope**, translate the same changes into a `.voxlert.json` file instead of running CLI commands. Check if it already exists (read it first if so) and merge only the changed field(s).
+For **project scope**, translate the same changes into a `.voxlert.json` file instead of running CLI commands:
+1. Run `ls .voxlert.json 2>/dev/null` to check if it already exists.
+2. If it exists, read it first, merge the new field(s), then overwrite.
+3. If it doesn't exist, create it with only the changed field(s).
 
 ### Step 4 — Confirm
 
 Tell the user what changed and where. Changes take effect on the next hook event — no restart needed.
 
-## Cache
-
-After switching voice pack, clear cached audio so phrases re-render with the new voice:
-
-```bash
-voxlert cache clear
-```
