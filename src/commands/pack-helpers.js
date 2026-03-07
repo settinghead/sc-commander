@@ -37,7 +37,7 @@ export async function testPipeline(text, pack) {
   showOverlay(phrase, {
     category: "notification",
     packName: activePack.name,
-    packId: activePack.id || (config.active_pack || "sc2-adjutant"),
+    packId: activePack.id || (config.active_pack || "sc1-kerrigan-infested"),
     prefix: "Test",
     config,
     overlayColors: activePack.overlay_colors,

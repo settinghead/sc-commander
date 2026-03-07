@@ -15,7 +15,7 @@
   "chatterbox_url": "http://localhost:8004",
   "tts_backend": "chatterbox",
   "qwen_tts_url": "http://localhost:8100",
-  "active_pack": "sc2-adjutant",
+  "active_pack": "sc1-kerrigan-infested",
   "volume": 1.0,
   "logging": true,
   "error_log": false,

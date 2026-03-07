@@ -127,7 +127,7 @@ npm run changeset
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/red-alert-eva.png" width="48" height="48" /> | `red-alert-eva` | **EVA** | Command & Conquer: Red Alert | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc1-kerrigan.gif" width="48" height="48" /> | `sc1-kerrigan` | **SC1 Kerrigan** | StarCraft | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc1-kerrigan-infested.jpg" width="48" height="48" /> | `sc1-kerrigan-infested` | **SC1 Infested Kerrigan** | StarCraft | ✅ Available |
-| <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc2-kerrigan.jpg" width="48" height="48" /> | `sc2-kerrigan` | **SC2 Kerrigan** | StarCraft II | ✅ Available |
+| <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc2-kerrigan-infested.jpg" width="48" height="48" /> | `sc2-kerrigan-infested` | **SC2 Infested Kerrigan** | StarCraft II | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc1-protoss-advisor.jpg" width="48" height="48" /> | `sc1-protoss-advisor` | **Protoss Advisor** | StarCraft | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/ss1-shodan.png" width="48" height="48" /> | `ss1-shodan` | **SHODAN** | System Shock | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/hl-hev-suit.png" width="48" height="48" /> | `hl-hev-suit` | **HEV Suit** | Half-Life | ✅ Available |
@@ -251,7 +251,7 @@ Run `voxlert config path` to find `config.json`. You can edit it directly or use
 | `openrouter_model` | string \| null | `null` | Legacy alias used when `llm_model` is empty and backend is `openrouter` |
 | `chatterbox_url` | string | `"http://localhost:8004"` | Chatterbox TTS server URL |
 | `tts_backend` | string | `"chatterbox"` | TTS backend: `chatterbox` or `qwen` |
-| `active_pack` | string | `"sc2-adjutant"` | Active voice pack ID |
+| `active_pack` | string | `"sc1-kerrigan-infested"` | Active voice pack ID |
 | `volume` | number | `1.0` | Playback volume (0.0-1.0) |
 | `categories` | object | — | Per-category enable/disable settings |
 | `logging` | boolean | `true` | Activity log in `~/.voxlert/voxlert.log` |

@@ -364,7 +364,7 @@ export async function runSetup() {
     const chosenPack = await select({
       message: "Choose a voice pack:",
       choices: packChoices,
-      default: active || "sc2-adjutant",
+      default: active || "sc1-kerrigan-infested",
     });
     config.active_pack = chosenPack;
   } else {

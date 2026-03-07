@@ -155,7 +155,7 @@ export async function processHookEvent(eventData) {
     }
   }
 
-  const packId = config.active_pack || "sc2-adjutant";
+  const packId = config.active_pack || "sc1-kerrigan-infested";
   const phraseOneLine = phrase.replace(/\s+/g, " ").slice(0, 120);
   debugLog("processHookEvent speaking", { source, phrase: phraseOneLine });
   appendLog(

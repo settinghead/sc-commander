@@ -39,7 +39,7 @@ Generate speech directly:
 ```bash
 curl -X POST http://localhost:8100/tts \
   -H 'Content-Type: application/json' \
-  -d '{"text": "Hello world", "pack_id": "sc2-kerrigan"}' \
+  -d '{"text": "Hello world", "pack_id": "sc2-kerrigan-infested"}' \
   --output hello.wav
 ```
 
@@ -78,7 +78,7 @@ Generate speech from text using a voice pack.
 **Request:**
 
 ```json
-{"text": "The swarm consumes all.", "pack_id": "sc2-kerrigan"}
+{"text": "The swarm consumes all.", "pack_id": "sc2-kerrigan-infested"}
 ```
 
 **Response:** `audio/wav` (PCM 16-bit)
@@ -105,7 +105,7 @@ curl http://localhost:8100/health | python3 -m json.tool
     "model": "Qwen3-TTS-12Hz-1.7B-Base-8bit",
     "runtime": "mlx",
     "device": "apple-silicon-mlx",
-    "cached_packs": ["hl-hev-suit", "red-alert-eva", "sc2-kerrigan", "..."]
+    "cached_packs": ["hl-hev-suit", "red-alert-eva", "sc2-kerrigan-infested", "..."]
 }
 ```
 

@@ -1,5 +1,5 @@
 {
-  "name": "StarCraft 2 Kerrigan",
+  "name": "StarCraft 2 Infested Kerrigan",
   "overlay_colors": [[0.5, 0.1, 0.6], [0.3, 0.0, 0.4]],
   "voice": "voice.wav",
   "echo": true,

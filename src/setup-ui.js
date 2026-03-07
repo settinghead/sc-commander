@@ -99,7 +99,7 @@ function formatCurrentConfig(config, installedPlatforms) {
     ? `${provider ? provider.name : (config.llm_backend || "openrouter")} (${config.llm_model || provider?.defaultModel || "default"})`
     : "Fallback only";
   const ttsLabel = config.tts_backend || "chatterbox";
-  const voiceLabel = config.active_pack || "sc2-adjutant";
+  const voiceLabel = config.active_pack || "sc1-kerrigan-infested";
   const platforms = installedPlatforms.filter(Boolean);
   return [
     `${color("Current", ANSI.dim)} ${providerLabel}`,
