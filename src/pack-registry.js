@@ -13,6 +13,7 @@ export const PACK_REGISTRY = [
   { id: "sc1-adjutant", name: "StarCraft 1 Adjutant" },
   { id: "red-alert-eva", name: "Red Alert EVA" },
   { id: "sc1-kerrigan", name: "SC1 Kerrigan" },
+  { id: "sc1-kerrigan-infested", name: "SC1 Infested Kerrigan" },
   { id: "sc2-kerrigan", name: "SC2 Kerrigan" },
   { id: "sc1-protoss-advisor", name: "Protoss Advisor (SC1)" },
   { id: "sc2-protoss-advisor", name: "Protoss Advisor (SC2)" },

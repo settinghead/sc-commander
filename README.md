@@ -126,6 +126,7 @@ npm run changeset
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc2-adjutant.jpg" width="48" height="48" /> | `sc2-adjutant` | **SC2 Adjutant** | StarCraft II | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/red-alert-eva.png" width="48" height="48" /> | `red-alert-eva` | **EVA** | Command & Conquer: Red Alert | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc1-kerrigan.gif" width="48" height="48" /> | `sc1-kerrigan` | **SC1 Kerrigan** | StarCraft | ✅ Available |
+| <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc1-kerrigan-infested.jpg" width="48" height="48" /> | `sc1-kerrigan-infested` | **SC1 Infested Kerrigan** | StarCraft | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc2-kerrigan.jpg" width="48" height="48" /> | `sc2-kerrigan` | **SC2 Kerrigan** | StarCraft II | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/sc1-protoss-advisor.jpg" width="48" height="48" /> | `sc1-protoss-advisor` | **Protoss Advisor** | StarCraft | ✅ Available |
 | <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/ss1-shodan.png" width="48" height="48" /> | `ss1-shodan` | **SHODAN** | System Shock | ✅ Available |
