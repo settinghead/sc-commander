@@ -1,5 +1,8 @@
 # MLX backend (Apple Silicon only). Install after requirements.txt:
 # pip install -r requirements-mlx.txt
+#
+# qwen-tts 0.1.1 pins transformers==4.57.3; mlx-audio>=0.3.1 and
+# mlx-lm>=0.30 require transformers>=5.x, so cap them to stay compatible.
 mlx>=0.31.0
-mlx-audio>=0.3.1
-mlx-lm>=0.30.5
+mlx-audio>=0.2.10,<0.3.1
+mlx-lm>=0.29.1,<0.30
