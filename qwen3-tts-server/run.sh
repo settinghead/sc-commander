@@ -32,9 +32,11 @@ resolve_python() {
 }
 
 uv_bootstrap() {
-    local uv_args=(run --with-requirements requirements.txt)
+    local uv_args=(run --with-requirements requirements-common.txt)
     if [[ "$QWEN_TTS_RUNTIME" == "mlx" ]] && [[ "$(uname -m)" == "arm64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
-        uv_args+=(--with-requirements requirements-mlx.txt)
+        uv_args+=(--with-requirements requirements-mlx.txt --prerelease=allow)
+    else
+        uv_args+=(--with-requirements requirements-pytorch.txt)
     fi
     exec env QWEN_TTS_UV_BOOTSTRAPPED=1 uv "${uv_args[@]}" ./run.sh
 }
