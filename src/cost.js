@@ -99,7 +99,10 @@ export async function formatCost() {
     totalTokens += e.total_tokens || 0;
   }
 
-  const lines = ["Usage Summary", "=".repeat(40)];
+  const earliest = entries.reduce((min, e) => e.timestamp && e.timestamp < min ? e.timestamp : min, entries[0].timestamp || "");
+  const sinceLabel = earliest ? `Since ${new Date(earliest).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}` : "";
+
+  const lines = ["Usage Summary" + (sinceLabel ? ` (${sinceLabel})` : ""), "=".repeat(40)];
 
   let grandCost = 0;
   let totalEstimated = 0;
