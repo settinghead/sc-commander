@@ -57,6 +57,8 @@ You will also want:
 
 The setup wizard auto-detects running TTS backends. If none are running yet, setup still completes, but you will only get text notifications and fallback phrases until you start one and rerun setup.
 
+> **Can't run local TTS?** Both backends require a GPU or Apple Silicon. If that's a blocker, [request early access to Pipevox](https://settinghead.github.io/pipevox-signup) — a hosted option that needs no local TTS setup.
+
 ### 2. Install and run setup
 
 ```bash
