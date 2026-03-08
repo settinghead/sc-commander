@@ -23,8 +23,6 @@ import { registerCursorHooks, unregisterCursorHooks, hasCursorHooks } from "./cu
 import { registerCodexNotify, getCodexConfigPath, unregisterCodexNotify, hasCodexNotify } from "./codex-config.js";
 import { printSetupHeader, printStep, printStatus, printSuccess, printWarning, highlight } from "./setup-ui.js";
 import {
-  QWEN_DOCS_URL,
-  CHATTERBOX_DOCS_URL,
   probeTtsBackend,
   chooseTtsBackend,
   verifyTtsSetup,
@@ -378,8 +376,6 @@ export async function runSetup() {
 
   printStatus("Recommended", "Qwen TTS for a more natural voice");
   printStatus("Voice test", `Uses the voice you picked in Step 4 (${config.active_pack || "default"})`);
-  printStatus("Qwen TTS setup docs", QWEN_DOCS_URL);
-  printStatus("Chatterbox setup docs", CHATTERBOX_DOCS_URL);
   console.log("");
 
   process.stdout.write("  Checking Chatterbox (port 8004)... ");

@@ -13,7 +13,7 @@
     "timeout": 15000
   },
   "chatterbox_url": "http://localhost:8004",
-  "tts_backend": "chatterbox",
+  "tts_backend": "qwen",
   "qwen_tts_url": "http://localhost:8100",
   "active_pack": "sc1-kerrigan-infested",
   "volume": 1.0,

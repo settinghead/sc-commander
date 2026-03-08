@@ -23,7 +23,22 @@ function createHelpText() {
 
 async function maybeRunSetup(command) {
   if (command.skipSetupWizard || existsSync(STATE_DIR)) return false;
-  console.log("Welcome to Voxlert! Let's get you set up.\n");
+  console.log("Welcome to Voxlert! First time here?\n");
+  const select = (await import("@inquirer/select")).default;
+  const action = await select({
+    message: "What would you like to do?",
+    choices: [
+      { name: "Run setup", value: "setup", description: "Configure LLM, voice packs, TTS, and hooks" },
+      { name: "Show command list", value: "help", description: "See all available commands" },
+    ],
+    default: "setup",
+  });
+  if (action === "help") {
+    console.log("");
+    console.log(createHelpText());
+    return true;
+  }
+  console.log("");
   const { runSetup } = await import("./setup.js");
   await runSetup();
   return true;

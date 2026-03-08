@@ -506,7 +506,7 @@ export async function speakPhrase(phrase, config, pack) {
   mkdirSync(packCacheDir, { recursive: true });
 
   const ttsParams = pack ? pack.tts_params : null;
-  const backend = config.tts_backend || "chatterbox";
+  const backend = config.tts_backend || "qwen";
   const cacheKey = createHash("md5")
     .update(backend + ":" + phrase.toLowerCase() + (ttsParams ? JSON.stringify(ttsParams) : ""))
     .digest("hex");

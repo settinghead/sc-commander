@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://youtu.be/5xFXGijwJuk">
+  <a href="https://youtu.be/5xFXGijwJuk?utm_source=github&utm_medium=readme&utm_campaign=phase1">
     <img src="https://raw.githubusercontent.com/settinghead/voxlert/main/assets/demo-thumbnail.png" alt="Voxlert Demo" width="100%" />
   </a>
 </p>
@@ -252,7 +252,7 @@ Run `voxlert config path` to find `config.json`. You can edit it directly or use
 | `openrouter_api_key` | string \| null | `null` | Legacy alias used when `llm_backend` is `openrouter` and `llm_api_key` is empty |
 | `openrouter_model` | string \| null | `null` | Legacy alias used when `llm_model` is empty and backend is `openrouter` |
 | `chatterbox_url` | string | `"http://localhost:8004"` | Chatterbox TTS server URL |
-| `tts_backend` | string | `"chatterbox"` | TTS backend: `chatterbox` or `qwen` |
+| `tts_backend` | string | `"qwen"` | TTS backend: `qwen` or `chatterbox` |
 | `active_pack` | string | `"sc1-kerrigan-infested"` | Active voice pack ID |
 | `volume` | number | `1.0` | Playback volume (0.0-1.0) |
 | `categories` | object | — | Per-category enable/disable settings |

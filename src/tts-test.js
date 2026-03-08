@@ -41,12 +41,14 @@ export function getTtsChoices(currentBackend) {
         ? "Qwen TTS (recommended, current, more natural voice, port 8100)"
         : "Qwen TTS (recommended, more natural voice, port 8100)",
       value: "qwen",
+      description: `Setup docs: ${QWEN_DOCS_URL}`,
     },
     {
       name: currentBackend === "chatterbox"
         ? "Chatterbox (current, port 8004)"
         : "Chatterbox (port 8004)",
       value: "chatterbox",
+      description: `Setup docs: ${CHATTERBOX_DOCS_URL}`,
     },
   ];
 }
