@@ -421,7 +421,6 @@ export async function runSetup({ nonInteractive = false } = {}) {
 
   config.tts_backend = await chooseTtsBackend(config, { qwenUp, chatterboxUp });
   await verifyTtsSetup(config, config.tts_backend);
-  persist();
 
   // --- Step 6: Hooks (platforms) ---
   console.log("");
@@ -501,9 +500,6 @@ export async function runSetup({ nonInteractive = false } = {}) {
   if (selectedPlatforms.length === 0) {
     printWarning("No platforms selected. Run 'voxlert setup' again to install hooks later.");
   }
-
-  // --- Save config ---
-  saveConfig(config);
 
   // --- Summary ---
   printSetupSummary(config, "skip", []);
