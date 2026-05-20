@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { loadConfig } from "../config.js";
 
 const DEFAULT_QWEN_URL = "http://127.0.0.1:8100";
-const DEFAULT_SPECS = "qwen_tts.synthesize_segment";
+const DEFAULT_SPECS = "qwen_tts.synthesize_segment,qwen_tts.synthesize_batch";
 
 function optionValue(args, name) {
   const index = args.indexOf(name);
@@ -24,6 +24,25 @@ function isUnchainAppRoot(candidate) {
     existsSync(join(candidate, "package.json")) &&
     existsSync(join(candidate, "scripts", "workers", "portable-livestack-worker.ts"))
   );
+}
+
+function defaultQwenTtsCapability({ hostId, qwenUrl, env }) {
+  return {
+    kind: "qwen-tts",
+    hostId: hostId || env.UNCHAIN_HOST_ID || "voxlert-qwen-tts",
+    slots: Number(env.QWEN_TTS_SLOTS || 1),
+    leaseTtlSeconds: Number(env.QWEN_TTS_LEASE_TTL_SECONDS || 300),
+    labels: {
+      provider: "qwen",
+      ...(env.QWEN_TTS_RUNTIME ? { runtime: env.QWEN_TTS_RUNTIME } : {}),
+      ...(env.QWEN_TTS_DEVICE ? { device: env.QWEN_TTS_DEVICE } : {}),
+      ...(env.QWEN_TTS_MODEL ? { model: env.QWEN_TTS_MODEL } : {}),
+    },
+    localService: {
+      baseUrl: qwenUrl,
+      healthPath: "/health",
+    },
+  };
 }
 
 export function resolveUnchainRoot({ explicitRoot, env = process.env, cwd = process.cwd() } = {}) {
@@ -66,11 +85,14 @@ export function buildLivestackWorkerLaunch({
     DEFAULT_QWEN_URL;
   const specs = optionValue(args, "--specs") || env.UNCHAIN_WORKER_SPECS || DEFAULT_SPECS;
   const hostId = optionValue(args, "--host-id") || env.UNCHAIN_HOST_ID || null;
+  const capabilities = env.UNCHAIN_WORKER_CAPABILITIES ||
+    JSON.stringify([defaultQwenTtsCapability({ hostId, qwenUrl, env })]);
 
   const workerEnv = {
     ...env,
     UNCHAIN_WORKER_SPECS: specs,
     QWEN_TTS_URL: qwenUrl,
+    UNCHAIN_WORKER_CAPABILITIES: capabilities,
   };
   if (hostId) workerEnv.UNCHAIN_HOST_ID = hostId;
 
@@ -83,6 +105,7 @@ export function buildLivestackWorkerLaunch({
       UNCHAIN_WORKER_SPECS: workerEnv.UNCHAIN_WORKER_SPECS,
       QWEN_TTS_URL: workerEnv.QWEN_TTS_URL,
       ...(workerEnv.UNCHAIN_HOST_ID ? { UNCHAIN_HOST_ID: workerEnv.UNCHAIN_HOST_ID } : {}),
+      UNCHAIN_WORKER_CAPABILITIES: workerEnv.UNCHAIN_WORKER_CAPABILITIES,
       ...(workerEnv.UNCHAIN_OBJECT_STORE ? { UNCHAIN_OBJECT_STORE: workerEnv.UNCHAIN_OBJECT_STORE } : {}),
       ...(workerEnv.ALIYUN_OSS_BUCKET ? { ALIYUN_OSS_BUCKET: workerEnv.ALIYUN_OSS_BUCKET } : {}),
       ...(workerEnv.ALIYUN_OSS_REGION ? { ALIYUN_OSS_REGION: workerEnv.ALIYUN_OSS_REGION } : {}),
