@@ -23,6 +23,14 @@ test("builds a Qwen TTS Livestack worker launch plan", () => {
       "http://127.0.0.1:18080",
       "--host-id",
       "zz-tower0",
+      "--runtime",
+      "cuda",
+      "--device",
+      "rtx-4090",
+      "--model-id",
+      "qwen3-tts",
+      "--prompt-cache-version",
+      "cache-v1",
     ],
     env: {},
     config: {},
@@ -39,12 +47,20 @@ test("builds a Qwen TTS Livestack worker launch plan", () => {
     hostId: "zz-tower0",
     slots: 1,
     leaseTtlSeconds: 300,
-    labels: { provider: "qwen" },
+    labels: {
+      provider: "qwen",
+      runtime: "cuda",
+      device: "rtx-4090",
+      model: "qwen3-tts",
+      promptCacheVersion: "cache-v1",
+    },
     localService: {
       baseUrl: "http://127.0.0.1:18080",
       healthPath: "/health",
     },
   }]);
+  assert.equal(launch.env.QWEN_TTS_MODEL_ID, "qwen3-tts");
+  assert.equal(launch.env.QWEN_TTS_PROMPT_CACHE_VERSION, "cache-v1");
 });
 
 test("uses environment worker settings when no CLI override is provided", () => {
@@ -56,6 +72,8 @@ test("uses environment worker settings when no CLI override is provided", () => 
       UNCHAIN_WORKER_SPECS: "qwen_tts.synthesize_segment,qwen_tts.synthesize_batch",
       QWEN_TTS_URL: "http://localhost:8101",
       UNCHAIN_OBJECT_STORE: "aliyun-oss",
+      LIVESTACK_GATEWAY_URL: "http://gateway.local",
+      LIVESTACK_VAULT_SERVER_URL: "vault.internal:50504",
     },
     config: {},
   });
@@ -80,6 +98,8 @@ test("uses environment worker settings when no CLI override is provided", () => 
     }]),
   );
   assert.equal(launch.displayEnv.UNCHAIN_OBJECT_STORE, "aliyun-oss");
+  assert.equal(launch.displayEnv.LIVESTACK_GATEWAY_URL, "http://gateway.local");
+  assert.equal(launch.displayEnv.LIVESTACK_VAULT_SERVER_URL, "vault.internal:50504");
 });
 
 test("preserves explicit worker capabilities from the environment", () => {

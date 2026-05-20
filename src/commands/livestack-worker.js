@@ -26,18 +26,13 @@ function isUnchainAppRoot(candidate) {
   );
 }
 
-function defaultQwenTtsCapability({ hostId, qwenUrl, env }) {
+function defaultQwenTtsCapability({ hostId, qwenUrl, labels, env }) {
   return {
     kind: "qwen-tts",
     hostId: hostId || env.UNCHAIN_HOST_ID || "voxlert-qwen-tts",
     slots: Number(env.QWEN_TTS_SLOTS || 1),
     leaseTtlSeconds: Number(env.QWEN_TTS_LEASE_TTL_SECONDS || 300),
-    labels: {
-      provider: "qwen",
-      ...(env.QWEN_TTS_RUNTIME ? { runtime: env.QWEN_TTS_RUNTIME } : {}),
-      ...(env.QWEN_TTS_DEVICE ? { device: env.QWEN_TTS_DEVICE } : {}),
-      ...(env.QWEN_TTS_MODEL ? { model: env.QWEN_TTS_MODEL } : {}),
-    },
+    labels,
     localService: {
       baseUrl: qwenUrl,
       healthPath: "/health",
@@ -85,13 +80,24 @@ export function buildLivestackWorkerLaunch({
     DEFAULT_QWEN_URL;
   const specs = optionValue(args, "--specs") || env.UNCHAIN_WORKER_SPECS || DEFAULT_SPECS;
   const hostId = optionValue(args, "--host-id") || env.UNCHAIN_HOST_ID || null;
+  const labels = {
+    provider: "qwen",
+    ...stringField("runtime", optionValue(args, "--runtime") || env.QWEN_TTS_RUNTIME),
+    ...stringField("device", optionValue(args, "--device") || env.QWEN_TTS_DEVICE),
+    ...stringField("model", optionValue(args, "--model-id") || env.QWEN_TTS_MODEL_ID || env.QWEN_TTS_MODEL),
+    ...stringField("promptCacheVersion", optionValue(args, "--prompt-cache-version") || env.QWEN_TTS_PROMPT_CACHE_VERSION),
+  };
   const capabilities = env.UNCHAIN_WORKER_CAPABILITIES ||
-    JSON.stringify([defaultQwenTtsCapability({ hostId, qwenUrl, env })]);
+    JSON.stringify([defaultQwenTtsCapability({ hostId, qwenUrl, labels, env })]);
 
   const workerEnv = {
     ...env,
     UNCHAIN_WORKER_SPECS: specs,
     QWEN_TTS_URL: qwenUrl,
+    ...(labels.runtime ? { QWEN_TTS_RUNTIME: labels.runtime } : {}),
+    ...(labels.device ? { QWEN_TTS_DEVICE: labels.device } : {}),
+    ...(labels.model ? { QWEN_TTS_MODEL_ID: labels.model } : {}),
+    ...(labels.promptCacheVersion ? { QWEN_TTS_PROMPT_CACHE_VERSION: labels.promptCacheVersion } : {}),
     UNCHAIN_WORKER_CAPABILITIES: capabilities,
   };
   if (hostId) workerEnv.UNCHAIN_HOST_ID = hostId;
@@ -109,8 +115,15 @@ export function buildLivestackWorkerLaunch({
       ...(workerEnv.UNCHAIN_OBJECT_STORE ? { UNCHAIN_OBJECT_STORE: workerEnv.UNCHAIN_OBJECT_STORE } : {}),
       ...(workerEnv.ALIYUN_OSS_BUCKET ? { ALIYUN_OSS_BUCKET: workerEnv.ALIYUN_OSS_BUCKET } : {}),
       ...(workerEnv.ALIYUN_OSS_REGION ? { ALIYUN_OSS_REGION: workerEnv.ALIYUN_OSS_REGION } : {}),
+      ...(workerEnv.LIVESTACK_GATEWAY_URL ? { LIVESTACK_GATEWAY_URL: workerEnv.LIVESTACK_GATEWAY_URL } : {}),
+      ...(workerEnv.LIVESTACK_VAULT_SERVER_URL ? { LIVESTACK_VAULT_SERVER_URL: workerEnv.LIVESTACK_VAULT_SERVER_URL } : {}),
+      ...(workerEnv.LIVESTACK_PROJECT_ID ? { LIVESTACK_PROJECT_ID: workerEnv.LIVESTACK_PROJECT_ID } : {}),
     },
   };
+}
+
+function stringField(name, value) {
+  return value ? { [name]: value } : {};
 }
 
 export const livestackWorkerCommand = {
