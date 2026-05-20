@@ -6,6 +6,7 @@ import { cursorHookCommand } from "./cursor-hook.js";
 import { helpCommand } from "./help.js";
 import { hookCommand } from "./hook.js";
 import { logCommand } from "./log.js";
+import { livestackWorkerCommand } from "./livestack-worker.js";
 import { notificationCommand } from "./notification.js";
 import { packCommand } from "./pack.js";
 import { setupCommand } from "./setup.js";
@@ -23,6 +24,7 @@ export const COMMANDS = [
   configCommand,
   channelCommand,
   logCommand,
+  livestackWorkerCommand,
   voiceCommand,
   packCommand,
   volumeCommand,
