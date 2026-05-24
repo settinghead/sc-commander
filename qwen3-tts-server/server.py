@@ -35,7 +35,7 @@ VOICES_DIR = Path(os.environ.get(
 ))
 MODELS_DIR = Path(__file__).resolve().parent / "models"
 PORT = 8100
-TTS_TIMEOUT = int(os.environ.get("QWEN_TTS_TIMEOUT", "600"))
+TTS_TIMEOUT = int(os.environ.get("QWEN_TTS_TIMEOUT_SECONDS", "600"))
 
 app = FastAPI(title="Qwen3-TTS Server")
 
@@ -219,22 +219,25 @@ def _load_voices_mlx():
         wav_path = voice_dir / "voice.wav"
         if not meta_path.exists() or not wav_path.exists():
             continue
-        meta = json.loads(meta_path.read_text())
         voice_id = voice_dir.name
-        ref_text = meta["ref_text"]
+        try:
+            meta = json.loads(meta_path.read_text())
+            ref_text = meta["ref_text"]
 
-        # Try cached embeddings first (fast path — no model inference)
-        prompt = _load_voice_cache_mlx(voice_dir, ref_text)
-        if prompt is None:
-            # Cold start: compute from WAV and persist for next time
-            print(f"  computing voice prompt: {voice_id}")
-            prompt = _precompute_voice_mlx(str(wav_path), ref_text)
-            _save_voice_cache_mlx(voice_dir, prompt)
-        else:
-            print(f"  loaded cached voice: {voice_id}")
+            # Try cached embeddings first (fast path — no model inference)
+            prompt = _load_voice_cache_mlx(voice_dir, ref_text)
+            if prompt is None:
+                # Cold start: compute from WAV and persist for next time
+                print(f"  computing voice prompt: {voice_id}")
+                prompt = _precompute_voice_mlx(str(wav_path), ref_text)
+                _save_voice_cache_mlx(voice_dir, prompt)
+            else:
+                print(f"  loaded cached voice: {voice_id}")
 
-        voice_meta[voice_id] = {"ref_text": ref_text}
-        _mlx_prompt_cache[voice_id] = prompt
+            voice_meta[voice_id] = {"ref_text": ref_text}
+            _mlx_prompt_cache[voice_id] = prompt
+        except Exception as e:
+            print(f"  WARNING: skipping voice {voice_id}: {e}")
     _trim_voice_caches()
     print(f"Loaded {len(voice_meta)} voices")
 
@@ -364,14 +367,17 @@ def _load_voices_pytorch():
         wav_path = voice_dir / "voice.wav"
         if not meta_path.exists() or not wav_path.exists():
             continue
-        meta = json.loads(meta_path.read_text())
         voice_id = voice_dir.name
-        prompt = model.create_voice_clone_prompt(
-            ref_audio=str(wav_path),
-            ref_text=meta["ref_text"],
-        )
-        voice_prompt_cache[voice_id] = prompt
-        print(f"  cached voice: {voice_id}")
+        try:
+            meta = json.loads(meta_path.read_text())
+            prompt = model.create_voice_clone_prompt(
+                ref_audio=str(wav_path),
+                ref_text=meta["ref_text"],
+            )
+            voice_prompt_cache[voice_id] = prompt
+            print(f"  cached voice: {voice_id}")
+        except Exception as e:
+            print(f"  WARNING: skipping voice {voice_id}: {e}")
     _trim_voice_caches()
     print(f"Loaded {len(voice_prompt_cache)} voices")
 
