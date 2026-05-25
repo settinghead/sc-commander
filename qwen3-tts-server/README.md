@@ -1,6 +1,6 @@
 # Qwen3-TTS (Voxlert TTS backend)
 
-A FastAPI server that uses [Qwen3-TTS](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base) for voice-cloned text-to-speech. Give it a voice pack (a short WAV reference + transcript) and it generates speech in that voice.
+A FastAPI server that uses [Qwen3-TTS](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base) for voice-cloned text-to-speech. Upload a short WAV reference plus transcript to create a `voice_id`, then synthesize speech with that voice.
 
 ## Installation
 
@@ -39,14 +39,22 @@ uv run ./run.sh
 voxlert config set tts_backend qwen
 ```
 
-**Windows:** The scripts above are bash (e.g. `setup.sh`, `run.sh`). Use **WSL** or **Git Bash** to run them, or do the steps manually: create a venv, `pip install -r requirements.txt`, download the PyTorch models (see Troubleshooting → "Model not found"), then run `python server.py` with `QWEN_TTS_RUNTIME=pytorch` and ensure the voxlert `packs/` directory is available (e.g. clone the full voxlert repo and run the server from `qwen3-tts-server`).
+**Windows:** The scripts above are bash (e.g. `setup.sh`, `run.sh`). Use **WSL** or **Git Bash** to run them, or do the steps manually: create a venv, `pip install -r requirements.txt`, download the PyTorch models (see Troubleshooting → "Model not found"), then run `python server.py` with `QWEN_TTS_RUNTIME=pytorch` from `qwen3-tts-server`.
 
 Generate speech directly:
 
 ```bash
+VOICE_ID="$(
+  curl -sS -X POST http://localhost:8100/voices \
+    -F audio=@reference.wav \
+    -F ref_text='大家好，欢迎来到课程。' \
+    -F x_vector_only_mode=true |
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["voice_id"])'
+)"
+
 curl -X POST http://localhost:8100/tts \
   -H 'Content-Type: application/json' \
-  -d '{"text": "Hello world", "pack_id": "sc2-kerrigan-infested"}' \
+  -d "{\"text\": \"这就是本模块要解决的核心问题。\", \"voice_id\": \"$VOICE_ID\", \"language\": \"Chinese\"}" \
   --output hello.wav
 ```
 
@@ -79,30 +87,72 @@ QWEN_TTS_RUNTIME=pytorch QWEN_TTS_MODEL=0.6B ./run.sh
 
 ## API endpoints
 
+### `POST /voices`
+
+Register a cloned voice from a reference WAV and transcript.
+
+**Request:** multipart form data
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `audio` | yes | Reference WAV/audio file |
+| `ref_text` | yes | Transcript matching the reference audio |
+| `x_vector_only_mode` | no | `true` uses speaker embedding only; `false` uses ICL/reference-code cloning |
+
+For synthetic reference voices, prefer `x_vector_only_mode=true`. It keeps the
+speaker color while avoiding the machine-generated cadence in the reference
+clip.
+
+**Response:**
+
+```json
+{"voice_id": "43b93e137986c16b"}
+```
+
+```bash
+curl -X POST http://localhost:8100/voices \
+  -F audio=@reference.wav \
+  -F ref_text='大家好，欢迎来到课程。' \
+  -F x_vector_only_mode=true
+```
+
 ### `POST /tts`
 
-Generate speech from text using a voice pack.
+Generate speech from text using a registered `voice_id`.
 
 **Request:**
 
 ```json
-{"text": "The swarm consumes all.", "pack_id": "sc2-kerrigan-infested"}
+{
+  "text": "这就是本模块要解决的核心问题。",
+  "voice_id": "43b93e137986c16b",
+  "language": "Chinese",
+  "temperature": 0.95,
+  "subtalker_temperature": 0.95,
+  "top_p": 1.0
+}
 ```
 
 **Response:** `audio/wav` (PCM 16-bit)
 
-**Errors:** `404` if pack_id not found, `504` if generation exceeds the configured timeout.
+**Errors:** `404` if `voice_id` is not found, `504` if generation exceeds `QWEN_TTS_TIMEOUT_SECONDS` (default 600 s).
 
 ```bash
 curl -X POST http://localhost:8100/tts \
   -H 'Content-Type: application/json' \
-  -d '{"text": "Nuclear launch detected.", "pack_id": "sc2-adjutant"}' \
+  -d '{"text": "这就是本模块要解决的核心问题。", "voice_id": "43b93e137986c16b", "language": "Chinese"}' \
   --output speech.wav
 ```
 
+Supported PyTorch generation fields include `language`, `temperature`,
+`top_k`, `top_p`, `repetition_penalty`, `subtalker_temperature`,
+`subtalker_top_k`, `subtalker_top_p`, `max_new_tokens`, and
+`non_streaming_mode`. The server defaults `language` to `Chinese`; callers
+should still send it explicitly for production Chinese narration.
+
 ### `GET /health`
 
-Returns server status, loaded model, runtime, and available voice packs.
+Returns server status, loaded model, runtime, and available voices.
 
 ```bash
 curl http://localhost:8100/health | python3 -m json.tool
@@ -113,7 +163,7 @@ curl http://localhost:8100/health | python3 -m json.tool
     "model": "Qwen3-TTS-12Hz-1.7B-Base-8bit",
     "runtime": "mlx",
     "device": "apple-silicon-mlx",
-    "cached_packs": ["hl-hev-suit", "red-alert-eva", "sc2-kerrigan-infested", "..."]
+    "voices": ["32230314c32ab3e5", "43b93e137986c16b", "..."]
 }
 ```
 
@@ -127,14 +177,15 @@ curl http://localhost:8100/health | python3 -m json.tool
 | `run.sh` | Starts the server using `venv/bin/python`, `python`, or `python3` |
 | `setup.sh` | First-time setup: creates or repairs `venv`, installs deps, downloads models |
 
-## Voice packs
+## Voices
 
-Voice packs live in `../packs/` (the repository-level `packs/` directory). Each pack is a directory containing:
+Uploaded voices live in `qwen3-tts-server/voices/`. Each voice directory contains:
 
-- **`pack.json`** — metadata including `ref_text` (the transcript of the reference audio)
+- **`meta.json`** — metadata including `ref_text` and `x_vector_only_mode`
 - **`voice.wav`** — a short reference audio clip of the target voice
 
-The server reads all packs at startup and caches them. Only packs that have both `voice.wav` and a non-empty `ref_text` in `pack.json` are loaded.
+The server reads all voices at startup and caches them. Only voices that have
+both `voice.wav` and a non-empty `ref_text` in `meta.json` are loaded.
 
 ## Auto-start on boot
 
@@ -260,5 +311,7 @@ python3 -c "import torch; print('CUDA:', torch.cuda.is_available())"
 **MLX model download fails**  
 The MLX backend auto-downloads from HuggingFace on first run. If you're behind a proxy, set `HF_HUB_OFFLINE=0` and ensure `huggingface_hub` can reach the internet.
 
-**Pack not showing in /health**  
-The pack needs both `voice.wav` and a non-empty `ref_text` field in `pack.json`. Existing public packs already include `ref_text`; if you are authoring new packs, add a transcript before starting the server.
+**Voice not showing in /health**
+The voice needs both `voice.wav` and a non-empty `ref_text` field in
+`voices/<voice_id>/meta.json`. Prefer registering voices through `POST /voices`
+so the server creates the correct metadata and model-specific prompt cache.
