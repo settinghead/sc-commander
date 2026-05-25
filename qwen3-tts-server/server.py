@@ -34,7 +34,7 @@ VOICES_DIR = Path(os.environ.get(
     str(Path(__file__).resolve().parent / "voices"),
 ))
 MODELS_DIR = Path(__file__).resolve().parent / "models"
-PORT = 8100
+PORT = int(os.environ.get("QWEN_TTS_PORT", "8100"))
 TTS_TIMEOUT = int(os.environ.get("QWEN_TTS_TIMEOUT_SECONDS", "600"))
 
 app = FastAPI(title="Qwen3-TTS Server")
@@ -373,6 +373,7 @@ def _load_voices_pytorch():
             prompt = model.create_voice_clone_prompt(
                 ref_audio=str(wav_path),
                 ref_text=meta["ref_text"],
+                x_vector_only_mode=bool(meta.get("x_vector_only_mode", False)),
             )
             voice_prompt_cache[voice_id] = prompt
             print(f"  cached voice: {voice_id}")
@@ -382,21 +383,23 @@ def _load_voices_pytorch():
     print(f"Loaded {len(voice_prompt_cache)} voices")
 
 
-def _register_voice_pytorch(voice_id: str, wav_path: str, ref_text: str):
+def _register_voice_pytorch(voice_id: str, wav_path: str, ref_text: str, x_vector_only_mode: bool):
     prompt = model.create_voice_clone_prompt(
         ref_audio=wav_path,
         ref_text=ref_text,
+        x_vector_only_mode=x_vector_only_mode,
     )
     voice_prompt_cache[voice_id] = prompt
     voice_prompt_cache.move_to_end(voice_id)
     _trim_voice_caches()
 
 
-def _generate_pytorch(text: str, voice_clone_prompt) -> bytes:
+def _generate_pytorch(text: str, language: str, voice_clone_prompt, gen_kwargs: dict) -> bytes:
     wavs, sr = model.generate_voice_clone(
         text=text,
-        language="English",
+        language=language,
         voice_clone_prompt=voice_clone_prompt,
+        **gen_kwargs,
     )
     buf = io.BytesIO()
     sf.write(buf, wavs[0], sr, subtype="PCM_16", format="WAV")
@@ -428,12 +431,13 @@ def _hash_audio(data: bytes) -> str:
 async def upload_voice(
     audio: UploadFile = File(...),
     ref_text: str = Form(...),
+    x_vector_only_mode: bool = Form(False),
 ):
     audio_bytes = await audio.read()
     if not audio_bytes:
         raise HTTPException(400, "Empty audio file")
 
-    voice_id = _hash_audio(audio_bytes)
+    voice_id = _hash_audio(audio_bytes + b"|xvec") if x_vector_only_mode else _hash_audio(audio_bytes)
 
     # Already registered in memory — return immediately
     if RUNTIME == "mlx" and voice_id in _mlx_prompt_cache:
@@ -446,7 +450,10 @@ async def upload_voice(
     voice_dir.mkdir(parents=True, exist_ok=True)
     wav_path = voice_dir / "voice.wav"
     wav_path.write_bytes(audio_bytes)
-    (voice_dir / "meta.json").write_text(json.dumps({"ref_text": ref_text}))
+    (voice_dir / "meta.json").write_text(json.dumps({
+        "ref_text": ref_text,
+        "x_vector_only_mode": x_vector_only_mode,
+    }))
 
     # Register in memory (both backends need GPU work)
     loop = asyncio.get_running_loop()
@@ -458,7 +465,7 @@ async def upload_voice(
     else:
         await loop.run_in_executor(
             _gpu_executor,
-            _register_voice_pytorch, voice_id, str(wav_path), ref_text,
+            _register_voice_pytorch, voice_id, str(wav_path), ref_text, x_vector_only_mode,
         )
 
     print(f"Registered voice {voice_id}")
@@ -477,11 +484,44 @@ def list_voices():
 class TTSRequest(BaseModel):
     text: str
     voice_id: str | None = None
+    language: str | None = None
+    temperature: float | None = None
+    top_k: int | None = None
+    top_p: float | None = None
+    repetition_penalty: float | None = None
+    subtalker_temperature: float | None = None
+    subtalker_top_k: int | None = None
+    subtalker_top_p: float | None = None
+    max_new_tokens: int | None = None
+    non_streaming_mode: bool | None = None
+
+
+def _generation_kwargs(req: TTSRequest) -> dict:
+    fields = (
+        "temperature",
+        "top_k",
+        "top_p",
+        "repetition_penalty",
+        "subtalker_temperature",
+        "subtalker_top_k",
+        "subtalker_top_p",
+        "max_new_tokens",
+    )
+    return {key: getattr(req, key) for key in fields if getattr(req, key) is not None}
 
 
 @app.post("/tts")
 async def tts(req: TTSRequest):
-    cache_key = (req.text, req.voice_id)
+    language = req.language or "Chinese"
+    gen_kwargs = _generation_kwargs(req)
+    non_streaming_mode = req.non_streaming_mode if req.non_streaming_mode is not None else False
+    cache_key = (
+        req.text,
+        req.voice_id,
+        language,
+        non_streaming_mode,
+        json.dumps(gen_kwargs, sort_keys=True),
+    )
     cached = cache.get(cache_key)
     if cached is not None:
         return Response(content=cached, media_type="audio/wav")
@@ -510,7 +550,11 @@ async def tts(req: TTSRequest):
             wav_bytes = await asyncio.wait_for(
                 loop.run_in_executor(
                     _gpu_executor,
-                    _generate_pytorch, req.text, voice_prompt_cache[req.voice_id],
+                    _generate_pytorch,
+                    req.text,
+                    language,
+                    voice_prompt_cache[req.voice_id],
+                    {**gen_kwargs, "non_streaming_mode": non_streaming_mode},
                 ),
                 timeout=TTS_TIMEOUT,
             )
