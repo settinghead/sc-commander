@@ -12,13 +12,14 @@ import hashlib
 import asyncio
 import concurrent.futures
 from collections import OrderedDict
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 import cache
@@ -36,6 +37,9 @@ VOICES_DIR = Path(os.environ.get(
 MODELS_DIR = Path(__file__).resolve().parent / "models"
 PORT = int(os.environ.get("QWEN_TTS_PORT", "8100"))
 TTS_TIMEOUT = int(os.environ.get("QWEN_TTS_TIMEOUT_SECONDS", "600"))
+# Audio seconds per streamed chunk.  Lower = faster first-audio, more overhead.
+# 0.5 s gives sub-second time-to-first-chunk while keeping per-chunk work small.
+STREAM_INTERVAL = float(os.environ.get("QWEN_TTS_STREAM_INTERVAL", "0.5"))
 
 app = FastAPI(title="Qwen3-TTS Server")
 
@@ -256,17 +260,19 @@ def _register_voice_mlx(voice_id: str, wav_path: str, ref_text: str):
     _trim_voice_caches()
 
 
-def _generate_mlx(text: str, voice_id: str | None) -> bytes:
-    """Generate TTS audio, injecting cached voice embeddings when available.
+@contextmanager
+def _mlx_voice_context(text: str, voice_id: str | None, extra_kwargs: dict | None = None):
+    """Yield generate() kwargs with cached voice embeddings injected.
 
     When a voice_id has pre-computed data, we temporarily replace the model's
     extract_speaker_embedding and speech_tokenizer.encode with lambdas that
-    return the cached values.  This is safe because the GPU executor is
-    single-threaded — only one generation runs at a time.
+    return the cached values, restoring the originals on exit.  This is safe
+    because the GPU executor is single-threaded — only one generation runs at
+    a time.  Must be entered on the GPU executor thread.
     """
-    import mlx.core as mx
-
-    kwargs = {"text": text}
+    kwargs: dict = {"text": text}
+    if extra_kwargs:
+        kwargs.update(extra_kwargs)
 
     original_extract = None
     original_encode = None
@@ -290,6 +296,20 @@ def _generate_mlx(text: str, voice_id: str | None) -> bytes:
             st.encode = lambda *_a, **_kw: _codes
 
     try:
+        yield kwargs
+    finally:
+        # Always restore originals, even on error
+        if original_extract is not None:
+            model.extract_speaker_embedding = original_extract
+        if original_encode is not None:
+            model.speech_tokenizer.encode = original_encode
+
+
+def _generate_mlx(text: str, voice_id: str | None) -> bytes:
+    """Generate one complete WAV, injecting cached voice embeddings."""
+    import mlx.core as mx
+
+    with _mlx_voice_context(text, voice_id) as kwargs:
         chunks = []
         sample_rate = None
         for result in model.generate(**kwargs):
@@ -305,12 +325,43 @@ def _generate_mlx(text: str, voice_id: str | None) -> bytes:
         buf = io.BytesIO()
         sf.write(buf, audio, sample_rate, subtype="PCM_16", format="WAV")
         return buf.getvalue()
-    finally:
-        # Always restore originals, even on error
-        if original_extract is not None:
-            model.extract_speaker_embedding = original_extract
-        if original_encode is not None:
-            model.speech_tokenizer.encode = original_encode
+
+
+# Sentinel pushed onto the stream queue to signal clean end-of-generation.
+_STREAM_DONE = object()
+
+
+def _float_to_pcm16(audio_arr) -> bytes:
+    """Convert a float waveform in [-1, 1] to little-endian signed 16-bit PCM."""
+    a = np.asarray(audio_arr, dtype=np.float32).reshape(-1)
+    np.clip(a, -1.0, 1.0, out=a)
+    return (a * 32767.0).astype("<i2").tobytes()
+
+
+def _generate_mlx_stream(text, voice_id, queue, loop):
+    """Stream PCM chunks as they are produced.
+
+    Runs on the single GPU executor thread.  Pushes raw s16le PCM byte chunks
+    onto `queue` via the event loop, then a `_STREAM_DONE` sentinel.  A raised
+    exception is pushed instead so the consumer can stop cleanly.
+    """
+    import mlx.core as mx
+
+    def push(item):
+        loop.call_soon_threadsafe(queue.put_nowait, item)
+
+    try:
+        stream_flags = {"stream": True, "streaming_interval": STREAM_INTERVAL}
+        with _mlx_voice_context(text, voice_id, stream_flags) as kwargs:
+            for result in model.generate(**kwargs):
+                pcm = _float_to_pcm16(result.audio)
+                if pcm:
+                    push(pcm)
+        mx.clear_cache()
+        gc.collect()
+        push(_STREAM_DONE)
+    except Exception as exc:  # surfaced to the consumer; never crashes the loop
+        push(exc)
 
 
 # ---------------------------------------------------------------------------
@@ -563,6 +614,59 @@ async def tts(req: TTSRequest):
 
     cache.put(cache_key, wav_bytes)
     return Response(content=wav_bytes, media_type="audio/wav")
+
+
+@app.post("/tts/stream")
+async def tts_stream(req: TTSRequest):
+    """Stream raw PCM as the model produces it (MLX backend only).
+
+    Body: little-endian signed 16-bit mono PCM, chunked as generated.
+    Headers advertise the format so the caller can wrap/transcode (e.g. to
+    Opus).  No WAV header is emitted — the length is unknown mid-stream.
+
+    The generation runs on the single GPU executor thread; chunks flow out
+    through an asyncio queue.  First-audio latency ≈ model time-to-first-chunk
+    (tuned by QWEN_TTS_STREAM_INTERVAL), not the full clip duration.
+    """
+    if RUNTIME != "mlx":
+        raise HTTPException(400, "Streaming is only implemented for the MLX runtime")
+    if req.voice_id and req.voice_id not in _mlx_prompt_cache:
+        raise HTTPException(404, f"Unknown voice_id: {req.voice_id}")
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    # Kick off generation on the GPU thread; do NOT await — chunks arrive via
+    # the queue.  The future is intentionally not held: if the client
+    # disconnects, generation runs to completion and its chunks are dropped.
+    loop.run_in_executor(
+        _gpu_executor, _generate_mlx_stream, req.text, req.voice_id, queue, loop,
+    )
+
+    async def body():
+        while True:
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=TTS_TIMEOUT)
+            except asyncio.TimeoutError:
+                print("[tts/stream] timed out waiting for audio")
+                return
+            if item is _STREAM_DONE:
+                return
+            if isinstance(item, Exception):
+                # Mid-stream failure: end the response.  Bytes already sent are
+                # valid PCM; the caller treats a short stream as a soft failure.
+                print(f"[tts/stream] generation error: {item}")
+                return
+            yield item
+
+    sr = int(getattr(model, "sample_rate", 24000))
+    headers = {
+        "X-Sample-Rate": str(sr),
+        "X-Audio-Format": "s16le",
+        "X-Channels": "1",
+        "Cache-Control": "no-store",
+    }
+    return StreamingResponse(body(), media_type="application/octet-stream", headers=headers)
 
 
 @app.get("/health")
