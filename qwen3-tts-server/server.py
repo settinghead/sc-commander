@@ -23,6 +23,7 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 import cache
+import pcm_cache
 
 RUNTIME = os.environ.get("QWEN_TTS_RUNTIME", "mlx").lower()
 
@@ -61,6 +62,31 @@ _mlx_prompt_cache: OrderedDict[str, dict] = OrderedDict()
 _gpu_executor = concurrent.futures.ThreadPoolExecutor(
     max_workers=1, thread_name_prefix="gpu",
 )
+
+# ---------------------------------------------------------------------------
+# Admission control — bound concurrent in-flight streaming syntheses so a burst
+# cannot pile up unbounded on the single GPU thread.  Under cap: no behavior
+# change; over cap: honest 429 + Retry-After.  (Per-account fairness needs the
+# account threaded from the hub capability; this is the global guard.)
+# ---------------------------------------------------------------------------
+_MAX_INFLIGHT = max(1, int(os.environ.get("QWEN_TTS_MAX_INFLIGHT", "3")))
+_RETRY_AFTER_SECONDS = max(1, int(os.environ.get("QWEN_TTS_RETRY_AFTER", "2")))
+_inflight = 0  # single-threaded event loop -> a plain counter is race-free
+
+
+def _try_admit() -> bool:
+    """Reserve an in-flight slot if under cap; caller must _release() when done."""
+    global _inflight
+    if _inflight >= _MAX_INFLIGHT:
+        return False
+    _inflight += 1
+    return True
+
+
+def _release() -> None:
+    global _inflight
+    if _inflight > 0:
+        _inflight -= 1
 
 # ---------------------------------------------------------------------------
 # MLX backend
@@ -633,6 +659,37 @@ async def tts_stream(req: TTSRequest):
     if req.voice_id and req.voice_id not in _mlx_prompt_cache:
         raise HTTPException(404, f"Unknown voice_id: {req.voice_id}")
 
+    sr = int(getattr(model, "sample_rate", 24000))
+    base_headers = {
+        "X-Sample-Rate": str(sr),
+        "X-Audio-Format": "s16le",
+        "X-Channels": "1",
+        "Cache-Control": "no-store",
+    }
+
+    # L2 cache: identical (text, voice_id) ⇒ identical audio. Serve from disk and
+    # skip the GPU entirely (no admission slot needed — no synthesis runs).
+    cached = pcm_cache.get(req.text, req.voice_id)
+    if cached is not None:
+        cached_sr, cached_bytes = cached
+
+        async def cached_body():
+            chunk = 32768
+            for i in range(0, len(cached_bytes), chunk):
+                yield cached_bytes[i:i + chunk]
+
+        return StreamingResponse(
+            cached_body(),
+            media_type="application/octet-stream",
+            headers={**base_headers, "X-Sample-Rate": str(cached_sr), "X-Cache": "hit"},
+        )
+
+    if not _try_admit():
+        raise HTTPException(
+            429, "TTS server busy",
+            headers={"Retry-After": str(_RETRY_AFTER_SECONDS)},
+        )
+
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -644,29 +701,42 @@ async def tts_stream(req: TTSRequest):
     )
 
     async def body():
-        while True:
-            try:
-                item = await asyncio.wait_for(queue.get(), timeout=TTS_TIMEOUT)
-            except asyncio.TimeoutError:
-                print("[tts/stream] timed out waiting for audio")
-                return
-            if item is _STREAM_DONE:
-                return
-            if isinstance(item, Exception):
-                # Mid-stream failure: end the response.  Bytes already sent are
-                # valid PCM; the caller treats a short stream as a soft failure.
-                print(f"[tts/stream] generation error: {item}")
-                return
-            yield item
+        chunks: list[bytes] = []
+        completed = False
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=TTS_TIMEOUT)
+                except asyncio.TimeoutError:
+                    print("[tts/stream] timed out waiting for audio")
+                    return
+                if item is _STREAM_DONE:
+                    completed = True
+                    return
+                if isinstance(item, Exception):
+                    # Mid-stream failure: end the response.  Bytes already sent
+                    # are valid PCM; the caller treats a short stream as a soft
+                    # failure.
+                    print(f"[tts/stream] generation error: {item}")
+                    return
+                chunks.append(item)
+                yield item
+        finally:
+            _release()
+            # Only cache a CLEANLY completed synthesis — never a partial stream
+            # (client disconnect / timeout / error), which would poison the cache
+            # with truncated audio.
+            if completed and chunks:
+                try:
+                    pcm_cache.put(req.text, req.voice_id, sr, b"".join(chunks))
+                except Exception as e:  # noqa: BLE001
+                    print(f"[pcm_cache] put failed: {e}")
 
-    sr = int(getattr(model, "sample_rate", 24000))
-    headers = {
-        "X-Sample-Rate": str(sr),
-        "X-Audio-Format": "s16le",
-        "X-Channels": "1",
-        "Cache-Control": "no-store",
-    }
-    return StreamingResponse(body(), media_type="application/octet-stream", headers=headers)
+    return StreamingResponse(
+        body(),
+        media_type="application/octet-stream",
+        headers={**base_headers, "X-Cache": "miss"},
+    )
 
 
 @app.get("/health")
@@ -675,6 +745,8 @@ def health():
         "model": model_name,
         "runtime": RUNTIME,
         "tts_timeout_seconds": TTS_TIMEOUT,
+        "inflight": _inflight,
+        "max_inflight": _MAX_INFLIGHT,
     }
 
     if RUNTIME == "mlx":
