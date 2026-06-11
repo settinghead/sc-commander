@@ -237,7 +237,9 @@ function getPlaybackCommand(platform, volume, cachePath) {
     return { cmd: "ffplay", args: ["-nodisp", "-autoexit", "-loglevel", "quiet", cachePath] };
   }
   if (platform === "linux") {
-    return { cmd: "ffplay", args: ["-nodisp", "-autoexit", "-loglevel", "quiet", cachePath] };
+    try { execSync("command -v ffplay", { stdio: "ignore" }); return { cmd: "ffplay", args: ["-nodisp", "-autoexit", "-loglevel", "quiet", cachePath] }; } catch {}
+    try { execSync("command -v paplay", { stdio: "ignore" }); return { cmd: "paplay", args: [cachePath] }; } catch {}
+    try { execSync("command -v pw-play", { stdio: "ignore" }); return { cmd: "pw-play", args: [cachePath] }; } catch {}
   }
   return null;
 }
@@ -344,6 +346,35 @@ function downloadChatterbox(phrase, cachePath, config, voicePath, ttsParams) {
   });
 }
 
+function downloadEspeak(phrase, cachePath) {
+  return new Promise((resolve) => {
+    const proc = spawn("espeak-ng", [
+      "-w", cachePath,
+      "-s", "150",
+      phrase,
+    ], { stdio: ["ignore", "ignore", "ignore"] });
+    proc.on("close", () => resolve());
+    proc.on("error", () => resolve());
+  });
+}
+
+function downloadPiper(phrase, cachePath, config) {
+  return new Promise((resolve) => {
+    const piperBin = config.piper_binary || process.env.PIPER_BIN || "";
+    const piperModel = config.piper_model || "";
+    if (!piperModel) return resolve();
+    const args = ["-m", piperModel, "-f", cachePath];
+    const extraArgs = config.piper_args || [];
+    const proc = spawn(piperBin || "piper", [...args, ...extraArgs], {
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+    proc.stdin.write(phrase);
+    proc.stdin.end();
+    proc.on("close", () => resolve());
+    proc.on("error", () => resolve());
+  });
+}
+
 function downloadQwen(phrase, cachePath, config, voiceId) {
   return new Promise((resolve) => {
     const qwenUrl = config.qwen_tts_url || "http://localhost:8100";
@@ -396,6 +427,12 @@ function downloadQwen(phrase, cachePath, config, voiceId) {
 }
 
 async function downloadToCache(phrase, cachePath, config, voicePath, ttsParams, refText) {
+  if (config.tts_backend === "espeak") {
+    return downloadEspeak(phrase, cachePath);
+  }
+  if (config.tts_backend === "piper") {
+    return downloadPiper(phrase, cachePath, config);
+  }
   if (config.tts_backend === "qwen") {
     const voiceId = await registerVoiceWithQwen(config, voicePath, refText);
     return downloadQwen(phrase, cachePath, config, voiceId);

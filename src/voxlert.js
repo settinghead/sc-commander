@@ -7,7 +7,7 @@
  */
 
 import { resolvePrefix, DEFAULT_PREFIX } from "./prefix.js";
-import { appendFileSync, mkdirSync } from "fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "fs";
 import { hostname } from "os";
 import { execSync } from "child_process";
 import { loadConfig, EVENT_MAP, CONTEXTUAL_EVENTS, FALLBACK_PHRASES } from "./config.js";
@@ -15,8 +15,11 @@ import { extractContext, generatePhrase } from "./llm.js";
 import { speakPhrase } from "./audio.js";
 import { showOverlay } from "./overlay.js";
 import { loadPack } from "./packs.js";
+import { join } from "path";
 import { STATE_DIR, LOG_FILE, HOOK_DEBUG_LOG } from "./paths.js";
 import { appendLog } from "./activity-log.js";
+
+const TASK_START_FILE = join(STATE_DIR, "task-start.json");
 
 function debugLog(msg, data) {
   try {
@@ -41,6 +44,31 @@ function logFallback(eventName, reason, detail) {
   } catch {
     // best-effort logging
   }
+}
+
+function getTaskStartTime() {
+  try {
+    if (existsSync(TASK_START_FILE)) {
+      const data = JSON.parse(readFileSync(TASK_START_FILE, "utf-8"));
+      return data.timestamp || 0;
+    }
+  } catch {}
+  return 0;
+}
+
+function setTaskStartTime() {
+  try {
+    mkdirSync(STATE_DIR, { recursive: true });
+    writeFileSync(TASK_START_FILE, JSON.stringify({ timestamp: Date.now() }));
+  } catch {}
+}
+
+function shouldAnnounceStop(config) {
+  const minDuration = (config.min_task_duration_ms ?? 30000);
+  const start = getTaskStartTime();
+  if (!start) return true; // no start recorded, allow
+  const elapsed = Date.now() - start;
+  return elapsed >= minDuration;
 }
 
 /**
@@ -99,6 +127,19 @@ export async function processHookEvent(eventData) {
   const category = EVENT_MAP[eventName];
   if (!category) {
     debugLog("processHookEvent skip: no category for event", { source, eventName });
+    return;
+  }
+
+  // Track task start time on user prompt submit (always, regardless of category filter)
+  if (eventName === "UserPromptSubmit") {
+    setTaskStartTime();
+    debugLog("processHookEvent task start recorded", { source });
+  }
+
+  // Skip short events for all categories (always, regardless of category filter)
+  if (!shouldAnnounceStop(config)) {
+    const elapsed = Date.now() - getTaskStartTime();
+    debugLog("processHookEvent skip: short task", { source, eventName, elapsed_ms: elapsed });
     return;
   }
 
