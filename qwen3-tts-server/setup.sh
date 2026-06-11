@@ -41,7 +41,7 @@ fi
 echo "  Python: $py_version"
 
 # ── Virtual environment ──────────────────────────────────────────────────────
-if [[ -d venv ]] && [[ ! -x venv/bin/python3 ]] && [[ ! -x venv/bin/python ]]; then
+if [[ -d venv ]] && { [[ ! -x venv/bin/python3 ]] && [[ ! -x venv/bin/python ]]; } || [[ ! -e venv/bin/pip ]]; then
     warn "Existing virtual environment looks stale — recreating it."
     rm -rf venv
 fi

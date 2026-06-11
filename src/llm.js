@@ -190,6 +190,7 @@ function generatePhraseLocal(context, config, style, llmTemperature, examples) {
     const model = local.model || "default";
     const maxTokens = local.max_tokens || 50;
     const timeout = local.timeout || 15000;
+    const apiKey = local.api_key || config.llm_api_key || process.env.ANTHROPIC_AUTH_TOKEN || process.env.API_KEY || "";
 
     const messages = [
       { role: "system", content: buildSystemPrompt(style, "status-report", examples) },
@@ -213,14 +214,17 @@ function generatePhraseLocal(context, config, style, llmTemperature, examples) {
     const isHttps = url.protocol === "https:";
     const reqFn = isHttps ? httpsRequest : httpRequest;
 
+    const headers = {
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(payload),
+    };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+
     const req = reqFn(
       url,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(payload),
-        },
+        headers,
         timeout,
       },
       (res) => {
