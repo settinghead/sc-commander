@@ -1,3 +1,0 @@
-# Common + PyTorch (default). For MLX, use requirements-common.txt + requirements-mlx.txt.
--r requirements-common.txt
--r requirements-pytorch.txt

@@ -1,0 +1,3 @@
+[submodule "qwen3-tts-server"]
+	path = qwen3-tts-server
+	url = https://github.com/zigzag-tech/qwen3-tts-server.git

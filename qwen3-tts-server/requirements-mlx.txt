@@ -1,4 +1,0 @@
-# MLX backend (Apple Silicon only)
-mlx>=0.31.0
-mlx-audio>=0.3.1
-mlx-lm>=0.30.5
