@@ -55,7 +55,7 @@ You will also want:
 
 | Backend | Best for | Requirements |
 |---|---|---|
-| [**Qwen3-TTS**](qwen3-tts-server/README.md) (recommended) | Apple Silicon or NVIDIA GPU | Python 3.13+, 16 GB RAM, ~8 GB disk |
+| [**Qwen3-TTS**](https://github.com/zigzag-tech/polytts#readme) (recommended) | Apple Silicon or NVIDIA GPU | Python 3.13+, 16 GB RAM, ~8 GB disk |
 | [**Chatterbox**](docs/chatterbox-tts.md) | Any platform with GPU | Python 3.10+, CUDA or MPS |
 
 The setup wizard auto-detects running TTS backends. If none are running yet, setup still completes, but you will only get text notifications and fallback phrases until you start one and rerun setup.
@@ -80,7 +80,7 @@ For OpenClaw, install the separate [OpenClaw plugin](docs/openclaw.md).
 
 ### 3. Start a TTS backend for spoken voice
 
-Start [Qwen3-TTS](qwen3-tts-server/README.md) or [Chatterbox](docs/chatterbox-tts.md), then run:
+Start [Qwen3-TTS](https://github.com/zigzag-tech/polytts#readme) or [Chatterbox](docs/chatterbox-tts.md), then run:
 
 ```bash
 voxlert setup

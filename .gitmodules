@@ -1,3 +1,3 @@
-[submodule "qwen3-tts-server"]
-	path = qwen3-tts-server
-	url = https://github.com/zigzag-tech/qwen3-tts-server.git
+[submodule "polytts"]
+	path = polytts
+	url = https://github.com/zigzag-tech/polytts.git

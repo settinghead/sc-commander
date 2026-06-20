@@ -10,7 +10,7 @@ import { printStatus, printSuccess, printWarning } from "./setup-ui.js";
 
 const TTS_TEST_PHRASE = "Voxlert TTS check. If you hear this voice, your setup is working.";
 
-export const QWEN_DOCS_URL = "https://github.com/settinghead/voxlert/blob/main/qwen3-tts-server/README.md";
+export const QWEN_DOCS_URL = "https://github.com/zigzag-tech/polytts/blob/main/README.md";
 export const CHATTERBOX_DOCS_URL = "https://github.com/settinghead/voxlert/blob/main/docs/chatterbox-tts.md";
 
 function getRequestFunction(url) {
