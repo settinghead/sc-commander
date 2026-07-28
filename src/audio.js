@@ -228,9 +228,40 @@ function applyEcho(cachePath, customAudioFilter) {
  * - win32: ffplay (FFmpeg) — install FFmpeg and add to PATH
  * - linux: ffplay, else paplay (PulseAudio) or pw-play (PipeWire)
  */
+function findPlayer(bin) {
+  const dirs = (process.env.PATH || "").split(":").concat([
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+  ]);
+  for (const d of dirs) {
+    if (d && existsSync(join(d, bin))) return join(d, bin);
+  }
+  return null;
+}
+
 function getPlaybackCommand(platform, volume, cachePath) {
   const vol = Math.max(0, Math.min(1, volume));
   if (platform === "darwin") {
+    // Prefer ffplay/sox over afplay. afplay probes the macOS media library
+    // (plus microphone/screen-capture) on launch, which triggers recurring TCC
+    // permission popups when voxlert runs under a parent daemon (e.g. the
+    // benchday daemon's tmux makes that daemon the "responsible" process).
+    // afplay is the ONLY player that probes the media library (Apple Music) —
+    // that's the prompt the user actually sees. sox and ffplay do not touch it;
+    // any audio check they do incur (mic/screen) is silently denied for a
+    // background daemon and never prompts. sox triggers the fewest such checks,
+    // so prefer it, then ffplay, then afplay only if neither is installed.
+    const soxPlay = findPlayer("play");
+    if (soxPlay) {
+      return { cmd: soxPlay, args: ["-q", cachePath, "vol", String(vol)] };
+    }
+    const ffplay = findPlayer("ffplay");
+    if (ffplay) {
+      return {
+        cmd: ffplay,
+        args: ["-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", String(Math.round(vol * 100)), cachePath],
+      };
+    }
     return { cmd: "afplay", args: ["-v", String(vol), cachePath] };
   }
   if (platform === "win32") {
